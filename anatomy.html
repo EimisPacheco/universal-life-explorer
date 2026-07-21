@@ -105,12 +105,13 @@
             transform: translateX(calc(-100% + 46px));
             transition: transform .25s ease;
         }
-        #sidebar:hover, #sidebar:focus-within { transform: translateX(0); }
+        #sidebar:hover, #sidebar:focus-within, #sidebar.guidance-open { transform: translateX(0); }
         #sidebar::after {
             content: '☰'; position: absolute; right: 11px; top: 14px;
             color: rgba(255,255,255,.58); font-size: 16px; pointer-events: none;
         }
-        #sidebar:hover::after, #sidebar:focus-within::after { opacity: 0; }
+        #sidebar:hover::after, #sidebar:focus-within::after,
+        #sidebar.guidance-open::after { opacity: 0; }
         #sidebar .inner {
             flex: 1; display: flex; flex-direction: column;
             border-radius: 16px; background: linear-gradient(180deg, rgba(12,16,20,.86), rgba(7,10,13,.79));
@@ -119,7 +120,8 @@
             overflow: hidden;
             opacity: 0; pointer-events: none; transition: opacity .18s ease;
         }
-        #sidebar:hover .inner, #sidebar:focus-within .inner { opacity: 1; pointer-events: auto; }
+        #sidebar:hover .inner, #sidebar:focus-within .inner,
+        #sidebar.guidance-open .inner { opacity: 1; pointer-events: auto; }
 
         /* Sidebar Controls */
         .sidebar-controls {
@@ -462,7 +464,8 @@
             #header { padding: 12px; }
             #header .logo-text p, #header .status { display: none; }
             #sidebar { width: min(278px, calc(100vw - 24px)); margin-top: 64px; transform: translateX(calc(-100% + 46px)); transition: transform .25s ease; }
-            #sidebar:focus-within, #sidebar:hover { transform: translateX(0); }
+            #sidebar:focus-within, #sidebar:hover,
+            #sidebar.guidance-open { transform: translateX(0); }
             #detail-panel { left: 12px; right: 12px; bottom: 12px; top: auto; width: auto; height: min(46vh, 420px); margin: 0; }
             #hint-text { display: none; }
             #quality-toggle { padding: 0 8px; }
@@ -619,11 +622,17 @@
 
         /* ---- Quiz mode ---- */
         #quiz-card {
-            display: none; padding: 12px 20px; border-radius: 14px;
+            /* Top-RIGHT corner: clears the left sidebar (a slide-out panel up
+               to 300px) AND the centered head/neck (where thyroid/trachea/brain
+               sit). The right-edge #body-nav is vertically centred and starts
+               far below this, and the quiz suppresses the right detail panel,
+               so this corner stays clear. */
+            display: none; position: fixed; top: 16px; right: 16px; z-index: 95;
+            padding: 12px 18px; border-radius: 14px;
             background: rgba(10, 20, 16, 0.95);
             border: 1px solid rgba(120, 220, 170, 0.42);
             box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55); backdrop-filter: blur(7px);
-            color: #e6fbf1; text-align: center; min-width: 300px;
+            color: #e6fbf1; text-align: left; min-width: 240px; max-width: 300px;
         }
         #quiz-card.correct { border-color: rgba(120, 230, 150, 0.9); background: rgba(12, 40, 24, 0.96); }
         #quiz-card.wrong   { border-color: rgba(240, 130, 120, 0.9); background: rgba(44, 16, 16, 0.96); }
@@ -631,10 +640,11 @@
         #quiz-prompt b { color: #8ff0c0; }
         #quiz-sub { font-size: 12px; opacity: 0.72; margin-top: 5px; }
         #quiz-score {
-            margin-top: 8px; display: flex; gap: 16px; justify-content: center;
+            margin-top: 8px; display: flex; gap: 14px; justify-content: flex-start;
             font-size: 12px; letter-spacing: 0.05em; opacity: 0.9;
         }
         #quiz-score span b { color: #8ff0c0; font-size: 14px; }
+        #quiz-score .quiz-wrong b { color: #f6a89e; }
 
         /* ---- Help / shortcuts overlay ---- */
         #help-overlay {
@@ -687,14 +697,19 @@
     <div id="top-stack">
         <div id="mode-banner" role="status" aria-live="polite"></div>
         <div id="app-notice" role="alert" aria-live="assertive"></div>
-        <div id="quiz-card" aria-live="polite">
-            <div id="quiz-prompt"></div>
-            <div id="quiz-sub"></div>
-            <div id="quiz-score">
-                <span>SCORE <b id="quiz-score-value">0</b></span>
-                <span>STREAK <b id="quiz-streak-value">0</b></span>
-                <span>ASKED <b id="quiz-asked-value">0</b></span>
-            </div>
+    </div>
+    <!-- Quiz HUD lives OUTSIDE #top-stack: that stack is translateX(-50%)
+         centered, and a transformed ancestor captures position:fixed, which
+         pinned the card back over the centered head. As a direct body child
+         its fixed top-left corner is relative to the viewport. -->
+    <div id="quiz-card" aria-live="polite">
+        <div id="quiz-prompt"></div>
+        <div id="quiz-sub"></div>
+        <div id="quiz-score">
+            <span>RIGHT <b id="quiz-score-value">0</b></span>
+            <span class="quiz-wrong">WRONG <b id="quiz-wrong-value">0</b></span>
+            <span>STREAK <b id="quiz-streak-value">0</b></span>
+            <span>ASKED <b id="quiz-asked-value">0</b></span>
         </div>
     </div>
 
@@ -720,14 +735,15 @@
             <h2>How to use this</h2>
             <div class="help-sub">Everything here used to be hidden in hover-only tooltips. Press <kbd>?</kbd> any time to reopen.</div>
 
-            <h3>Learn Mode — grab your own organs</h3>
-            <div class="help-row"><div class="help-key">Turn on camera</div><div class="help-desc">Click <b>Motion Capture</b> in the sidebar, then stand back so your shoulders and hips are visible.</div></div>
-            <div class="help-row"><div class="help-key">Grab an organ</div><div class="help-desc">Put your hand over that spot on <em>your own body</em> and <b>close your fist</b>. The organ pops out and is explained aloud and on screen.</div></div>
-            <div class="help-row"><div class="help-key">Put it back</div><div class="help-desc">Open your hand, or move it back against your body.</div></div>
-            <div class="help-row"><div class="help-key">Ask a question</div><div class="help-desc">While holding an organ, hold <kbd>T</kbd> (or click the 🎤) and speak. Release to send.</div></div>
+            <h3>Learn Mode — explore from your own body</h3>
+            <div class="help-row"><div class="help-key">Turn on camera</div><div class="help-desc">Click <b>Motion Capture</b> in the sidebar, then stand back so your shoulders, hips, and hands are visible.</div></div>
+            <div class="help-row"><div class="help-key">Learn by touch</div><div class="help-desc">Rest an <b>open hand</b> on a location on your own body for about 1 second. The avatar reaches there and the guide explains that organ.</div></div>
+            <div class="help-row"><div class="help-key">Present an organ</div><div class="help-desc">Close your fist at that body location and hold for about half a second. You may lower your arm; the full presentation continues and the organ returns when narration finishes.</div></div>
+            <div class="help-row"><div class="help-key">Return or switch</div><div class="help-desc">To return early, open your hand, then hold a second fist at the same body location or with your arm extended. Make that second fist at a different body location to switch organs.</div></div>
+            <div class="help-row"><div class="help-key">Ask a question</div><div class="help-desc">While an organ is being presented, hold <kbd>T</kbd> (or hold the 🎤 button) and speak. Release to send.</div></div>
 
             <h3>Quiz Mode</h3>
-            <div class="help-row"><div class="help-key">How to play</div><div class="help-desc">The app names an organ — find it on your own body and make a fist there. Scores accuracy and streak.</div></div>
+            <div class="help-row"><div class="help-key">How to play</div><div class="help-desc">The app names an organ. Make a fist at that spot on your own body, hold the nose pointer on the matching avatar organ for 5 seconds, or click that organ. Scores accuracy and streak.</div></div>
             <div class="help-row"><div class="help-key">Wrong answer</div><div class="help-desc">Shows what you actually grabbed and reveals the one you were looking for.</div></div>
             <div class="help-row"><div class="help-key"><kbd>Esc</kbd></div><div class="help-desc">End the quiz</div></div>
 
@@ -865,11 +881,11 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
                         Rotate
                     </button>
-                    <button class="ctrl-btn active" id="ctrl-learn" title="Learn Mode: reach to a spot on your own body, close your hand and pull away to lift that organ out and hear about it.">
+                    <button class="ctrl-btn active" id="ctrl-learn" title="Learn Mode: rest an open hand on your body for about 1 second to hear about that organ, or hold a fist there for about half a second to present it.">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11V6a2 2 0 1 1 4 0v5"/><path d="M13 8V5a2 2 0 1 1 4 0v6"/><path d="M17 9a2 2 0 1 1 4 0v5a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7v-3a2 2 0 1 1 4 0"/></svg>
                         Learn
                     </button>
-                    <button class="ctrl-btn" id="ctrl-quiz" title="Quiz Mode: the app names an organ and you find it on your own body.">
+                    <button class="ctrl-btn" id="ctrl-quiz" title="Quiz Mode: answer with a fist at the matching spot on your body, a 5-second nose selection, or a click on the avatar organ.">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.1 9.5a3 3 0 1 1 4 2.8c-.8.3-1.1 1-1.1 1.7v.4"/><circle cx="12" cy="17.4" r="1"/></svg>
                         Quiz
                     </button>
@@ -885,16 +901,17 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                         Live Pose
                     </button>
-                    <button class="ctrl-btn" id="ctrl-sculpt" title="Edit an organ's shape with a drag brush. Drag upward to inflate; downward to indent. [ and ] change brush size; Z undoes the last stroke.">
+                    <!-- Shape-editing dev tools hidden from customers (functionality kept). -->
+                    <button class="ctrl-btn" id="ctrl-sculpt" style="display:none" title="Edit an organ's shape with a drag brush. Drag upward to inflate; downward to indent. [ and ] change brush size; Z undoes the last stroke.">
                         Sculpt
                     </button>
-                    <button class="ctrl-btn" id="ctrl-trace-arm" title="Draw the outline of an arm to reshape it. The drawn width becomes the arm's thickness along its length.">
+                    <button class="ctrl-btn" id="ctrl-trace-arm" style="display:none" title="Draw the outline of an arm to reshape it. The drawn width becomes the arm's thickness along its length.">
                         Trace Arm
                     </button>
-                    <button class="ctrl-btn" id="ctrl-trace-liver" title="Draw a new frontal liver border with a mouse, pen, or touch input.">
+                    <button class="ctrl-btn" id="ctrl-trace-liver" style="display:none" title="Draw a new frontal liver border with a mouse, pen, or touch input.">
                         Trace Liver
                     </button>
-                    <button class="ctrl-btn" id="ctrl-undo-shape" title="Undo the most recent sculpt or traced outline.">
+                    <button class="ctrl-btn" id="ctrl-undo-shape" style="display:none" title="Undo the most recent sculpt or traced outline.">
                         Undo Shape
                     </button>
                     <button class="ctrl-btn" id="ctrl-arrange" title="Select an organ, then use the mouse gizmo to move, rotate, or scale it.">
@@ -1182,6 +1199,21 @@
         window.addEventListener('unhandledrejection', event => {
             showBootstrapFailure(event.reason?.message || String(event.reason || 'promise rejected'));
         });
+
+        // The host onboarding guide spotlights controls inside this iframe.
+        // Hover/focus is not a reliable way to expose them while a modal guide
+        // owns pointer input, so the host gets an explicit open/close bridge.
+        window.__SET_ANATOMY_GUIDANCE_PANEL__ = open => {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar) return false;
+            sidebar.classList.toggle('guidance-open', !!open);
+            sidebar.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (!open) {
+                const focused = sidebar.querySelector(':focus');
+                if (focused && typeof focused.blur === 'function') focused.blur();
+            }
+            return true;
+        };
     </script>
     <script type="module">
         import * as THREE from 'three';
@@ -2761,75 +2793,11 @@
                     armPoint(side, ax + 0.04, 4.50, -0.03),
                 ], 0.0085, venaMat, 34, armSpans);
 
-                // Palm + finger vessels: one Hand root (like bone handPivot) so
-                // they rotate with the wrist; finger fans nest under fingerDrive
-                // so they curl with the bones/skin.
-                const handVesselRoot = new THREE.Group();
-                handVesselRoot.name = 'vessels:' + handTag;
-                handVesselRoot.userData.limbPivot = handTag;
-                handVesselRoot.userData.limbVessel = true;
-                const addHandTube = (parent, points, radius, material, segments = 16) => {
-                    const mesh = new THREE.Mesh(
-                        createTube(points, radius, segments, 8), material);
-                    mesh.castShadow = true;
-                    mesh.renderOrder = 0;
-                    parent.add(mesh);
-                    return mesh;
-                };
-                // Palm trunks — stop at the knuckle line (not past fingertips).
-                addHandTube(handVesselRoot, [
-                    armPoint(side, ax - 0.02, 4.90, 0.02), armPoint(side, ax - 0.02, 4.60, 0.03),
-                    armPoint(side, ax - 0.02, 4.40, 0.03),
-                ], 0.010, aortaMat, 20);
-                addHandTube(handVesselRoot, [
-                    armPoint(side, ax + 0.02, 4.90, -0.02), armPoint(side, ax + 0.02, 4.60, -0.01),
-                    armPoint(side, ax + 0.02, 4.40, 0.00),
-                ], 0.009, venaMat, 20);
-                // Finger rays sized like the skin digits (~0.35–0.40), with MCP+PIP
-                // so they fist with bones/skin instead of shooting into space.
-                const fans = [
-                    { finger: 0, x: -0.10, len: 0.34 },
-                    { finger: 1, x: -0.035, len: 0.38 },
-                    { finger: 2, x: 0.035, len: 0.36 },
-                    { finger: 3, x: 0.10, len: 0.30 },
-                    { finger: 4, x: side * 0.12, len: 0.26 }, // thumb
-                ];
-                fans.forEach((f) => {
-                    const baseA = f.finger === 4
-                        ? armPoint(side, ax + side * 0.06, 4.72, 0.05)
-                        : armPoint(side, ax + f.x * 0.35, 4.40, 0.03);
-                    const mcp = new THREE.Group();
-                    mcp.position.set(...baseA);
-                    mcp.userData.fingerDrive = { side: limbTag, finger: f.finger, joint: 'mcp' };
-                    const midLocal = f.finger === 4
-                        ? [side * 0.05, -f.len * 0.45, 0.04]
-                        : [f.x * 0.15, -f.len * 0.48, 0.02];
-                    const tipLocal = f.finger === 4
-                        ? [side * 0.08, -f.len, 0.06]
-                        : [f.x * 0.22, -f.len, 0.035];
-                    addHandTube(mcp, [
-                        [0, 0, 0],
-                        [midLocal[0], midLocal[1], midLocal[2]],
-                    ], 0.0048, aortaMat, 10);
-                    addHandTube(mcp, [
-                        [0.01, 0, -0.01],
-                        [midLocal[0] + 0.01, midLocal[1], midLocal[2] - 0.01],
-                    ], 0.0042, venaMat, 10);
-                    const pip = new THREE.Group();
-                    pip.position.set(...midLocal);
-                    pip.userData.fingerDrive = { side: limbTag, finger: f.finger, joint: 'pip' };
-                    addHandTube(pip, [
-                        [0, 0, 0],
-                        [tipLocal[0] - midLocal[0], tipLocal[1] - midLocal[1], tipLocal[2] - midLocal[2]],
-                    ], 0.0040, aortaMat, 8);
-                    addHandTube(pip, [
-                        [0.01, 0, -0.01],
-                        [tipLocal[0] - midLocal[0] + 0.01, tipLocal[1] - midLocal[1], tipLocal[2] - midLocal[2] - 0.01],
-                    ], 0.0036, venaMat, 8);
-                    mcp.add(pip);
-                    handVesselRoot.add(mcp);
-                });
-                vesselMeshes.push(handVesselRoot);
+                // (Hand vessels are built WITH the hand skeleton inside
+                // rebuildArmBones — authored in the finger-bone frames so they
+                // bind and articulate exactly with the digits. The standalone
+                // body-absolute fans that lived here ignored the hand's bind
+                // rotation and shot straight past the fingertips.)
 
                 // Common iliac and femoral vessels continue into each leg,
                 // tracking legSpread / legY / legLength so they stay centered
@@ -2910,9 +2878,14 @@
             // Depth was 0.36 against a width of 0.50-0.55: a flattened slab, and
             // the main reason these read as two cushions rather than organs. A
             // real lung is nearly as deep front-to-back as it is wide.
-            const rx = (isPatientRight ? 0.55 : 0.50) * S;
+            // Width trimmed 0.55→0.48 / 0.50→0.44: at 0.55 the base edge
+            // reached x≈1.14 against rib hoops that top out at 1.00, so the
+            // cage visibly sliced through the lung's lateral surface.
+            const rx = (isPatientRight ? 0.48 : 0.44) * S;
             const ry = 0.84 * S;
-            const rz = 0.50 * S;
+            // Depth trimmed 0.50→0.46: a small overall thinning (front-to-back)
+            // on top of the lateral flatten, so the lungs read a touch slimmer.
+            const rz = 0.40 * S;
             const lungGeo = createOrganicSphere(rx, ry, rz, 72, 0.030, isLeft ? 5 : 6);
 
             // Width as a fraction of full width, from apex (t=1) down to base.
@@ -2943,6 +2916,15 @@
                 const w = widthAt(t);
                 x *= w;
                 z *= 0.80 + 0.20 * w;                     // apex narrows in depth too
+
+                // Everything above the base leans toward the mediastinum: the
+                // rib hoops taper hard toward the apex (halfWidth 1.00 at pair
+                // 6 but only 0.44-0.72 at pairs 1-3), and a straight-sided
+                // lung centered for its base pokes laterally through ribs 1-5.
+                // Strength/onset tuned against the measured hoop widths so the
+                // lateral surface tracks the cage; real apices sit medially,
+                // tucked against the trachea.
+                x += medialDir * 0.34 * S * Math.pow(Math.max(0, (t - 0.15) / 0.85), 1.35);
 
                 // --- mediastinal surface is flat, costal surface is convex ---
                 const med = x * medialDir;                // >0 on the midline side
@@ -3005,6 +2987,27 @@
                     y -= (y - ry * 0.80) * 0.30 * a;
                 }
 
+                // --- costal surface tucks BEHIND the ribs (anterior tuck) ---
+                // A real lung's convex costal surface is molded to and lies
+                // just DEEP to the ribs — the cage is always the outermost
+                // layer. Untamed, this surface bulged to world z ~+0.48 while
+                // the rib bones' anterior border sits at ~+0.30, so the lungs
+                // poked out the front of the cage and the ribs read as sunk
+                // INTO the pink. Smoothly compress the anterior half (pivoting
+                // on `front`, 0 back → 1 front, so no crease at the midline)
+                // until the costal surface sits behind the ribs.
+                z *= THREE.MathUtils.lerp(1.0, 0.55, front);
+
+                // --- flatten the costal (lateral) surface ---
+                // From the side the lung read as a fat round bulb; a real
+                // costal surface is a broad, gently curved wall molded to the
+                // chest, flatter in front-to-back depth toward the flank.
+                // Compress the AP depth on the lateral half only (medN < 0),
+                // so the outer wall reads flatter without touching the
+                // mediastinal side.
+                const lateralAmt = Math.max(0, -medN);
+                z *= 1 - 0.22 * lateralAmt;
+
                 pos.setXYZ(i, x, y, z);
             }
             lungGeo.computeVertexNormals();
@@ -3026,16 +3029,19 @@
                 roughness: 0.86, clearcoat: 0, transparent: true, opacity: 0.20, depthWrite: false
             });
             const sx = xSign * 0.53;
+            // Fissure z values pulled back to ~0.40 to ride the newly tucked
+            // costal surface (front world z ~+0.26): at the old 0.69-0.75 they
+            // floated in front of the compressed lung, detached from it.
             const obliqueMesh = new THREE.Mesh(createTube([
-                [sx + xSign * 0.28, 8.95, 0.69], [sx + xSign * 0.20, 8.53, 0.73],
-                [sx + xSign * 0.02, 8.11, 0.75], [sx - xSign * 0.20, 7.72, 0.69]
+                [sx + xSign * 0.28, 8.95, 0.40], [sx + xSign * 0.20, 8.53, 0.43],
+                [sx + xSign * 0.02, 8.11, 0.44], [sx - xSign * 0.20, 7.72, 0.40]
             ], 0.007, 28, 7), fissureMat);
             obliqueMesh.renderOrder = 2;
             const fissureMeshes = [obliqueMesh];
             if (!isLeft) {
                 const horizontalMesh = new THREE.Mesh(createTube([
-                    [sx + 0.27, 8.37, 0.70], [sx + 0.13, 8.33, 0.74],
-                    [sx - 0.11, 8.30, 0.75], [sx - 0.25, 8.27, 0.70]
+                    [sx + 0.27, 8.37, 0.41], [sx + 0.13, 8.33, 0.44],
+                    [sx - 0.11, 8.30, 0.44], [sx - 0.25, 8.27, 0.41]
                 ], 0.0065, 24, 7), fissureMat);
                 horizontalMesh.renderOrder = 2;
                 fissureMeshes.push(horizontalMesh);
@@ -6223,7 +6229,12 @@
             pelvisGroup.add(new THREE.Mesh(pubGeo, pelvisMat));
 
             pelvisGroup.userData.organId = 'pelvis';
-            pelvisGroup.scale.x = 1.16;
+            // 0.84, not 1.16: at 1.16 the iliac plates reached world x 1.59
+            // against a measured hip silhouette of 1.24 — blades and crest
+            // tubes visibly pierced the skin, and the hip sockets sat LATERAL
+            // to the femur shafts (backwards). Keep rebuildLegBones' acetX
+            // factor identical to this scale.
+            pelvisGroup.scale.x = 0.84;
             pelvisGroup.position.z = 0.38;
             bodyGroup.add(pelvisGroup);
             organs.pelvis = pelvisGroup;
@@ -6422,6 +6433,31 @@
                     }
                 };
 
+                // Hand vasculature — authored in the SAME local frames as the
+                // finger bones (metacarpal runs in handGroup, phalanx runs in
+                // the mcp/pip pivots) so it binds and curls exactly with the
+                // skeleton. Tagged limbVessel so the Vessels layer owns its
+                // visibility; private materials so organ-level opacity passes
+                // over the arm bones can't dim the shared vessel materials.
+                const handArteryMat = createOrganMaterial('#c84349', {
+                    roughness: 0.55, clearcoat: 0.08,
+                    sheen: 0.24, sheenColor: '#e86a70',
+                    emissiveIntensity: 0.002, envMapIntensity: 0.48,
+                    noTexture: true
+                });
+                const handVeinMat = createOrganMaterial('#315fad', {
+                    roughness: 0.55, clearcoat: 0.08,
+                    sheen: 0.24, sheenColor: '#6383c6',
+                    envMapIntensity: 0.48, noTexture: true
+                });
+                const addHandVessel = (parent, pts, r, mat) => {
+                    const m = new THREE.Mesh(createTube(pts, r, 10, 6), mat);
+                    m.userData.limbVessel = true;
+                    m.castShadow = false;
+                    parent.add(m);
+                    return m;
+                };
+
                 // Thumb — CMC + IP pivots (opposed rest pose)
                 {
                     const t0 = [side * 0.10, handBaseOff + 0.02, 0.04];
@@ -6448,6 +6484,26 @@
                         [t2[0] - t1[0], t2[1] - t1[1], t2[2] - t1[2]],
                         [t3[0] - t1[0], t3[1] - t1[1], t3[2] - t1[2]],
                         0.016, 0.015);
+                    // Thumb artery (palmar, +z) and vein (dorsal, -z) hugging
+                    // both bone segments — they ride the same pivots.
+                    addHandVessel(cmc, [
+                        [0, 0, 0.026],
+                        [t1[0] - t0[0], t1[1] - t0[1], t1[2] - t0[2] + 0.026],
+                    ], 0.0050, handArteryMat);
+                    addHandVessel(cmc, [
+                        [0, 0, -0.024],
+                        [t1[0] - t0[0], t1[1] - t0[1], t1[2] - t0[2] - 0.024],
+                    ], 0.0044, handVeinMat);
+                    addHandVessel(ip, [
+                        [0, 0, 0.022],
+                        [t2[0] - t1[0], t2[1] - t1[1], t2[2] - t1[2] + 0.022],
+                        [(t3[0] - t1[0]) * 0.97, (t3[1] - t1[1]) * 0.97, t3[2] - t1[2] + 0.020],
+                    ], 0.0040, handArteryMat);
+                    addHandVessel(ip, [
+                        [0, 0, -0.020],
+                        [t2[0] - t1[0], t2[1] - t1[1], t2[2] - t1[2] - 0.020],
+                        [(t3[0] - t1[0]) * 0.97, (t3[1] - t1[1]) * 0.97, t3[2] - t1[2] - 0.018],
+                    ], 0.0036, handVeinMat);
                 }
 
                 // Index → pinky — open bind pose; curl rotates MCP then PIP
@@ -6494,6 +6550,58 @@
                         [dipPos[0] - pipPos[0], dipPos[1] - pipPos[1], dipPos[2] - pipPos[2]],
                         [tipPos[0] - pipPos[0], tipPos[1] - pipPos[1], tipPos[2] - pipPos[2]],
                         boneR[f] * 0.55, boneR[f] * 0.55);
+
+                    // Digital vessels: palmar artery (+z) and dorsal vein (-z)
+                    // per finger, riding the same bone pivots segment for
+                    // segment and stopping just shy of the fingertip.
+                    const ra = Math.max(0.0040, boneR[f] * 0.26);
+                    const rv = ra * 0.88;
+                    addHandVessel(handGroup, [
+                        [mcpPos[0], mcpPos[1], mcpPos[2] + 0.026],
+                        [knPos[0], knPos[1], knPos[2] + 0.027],
+                    ], ra, handArteryMat);
+                    addHandVessel(handGroup, [
+                        [mcpPos[0], mcpPos[1] + 0.012, mcpPos[2] - 0.022],
+                        [knPos[0], knPos[1] + 0.012, knPos[2] - 0.022],
+                    ], rv, handVeinMat);
+                    addHandVessel(mcp, [
+                        [0, 0, 0.024],
+                        [pipPos[0] - knPos[0], pipPos[1] - knPos[1], pipPos[2] - knPos[2] + 0.024],
+                    ], ra * 0.9, handArteryMat);
+                    addHandVessel(mcp, [
+                        [0, 0, -0.020],
+                        [pipPos[0] - knPos[0], pipPos[1] - knPos[1], pipPos[2] - knPos[2] - 0.020],
+                    ], rv * 0.9, handVeinMat);
+                    addHandVessel(pip, [
+                        [0, 0, 0.020],
+                        [dipPos[0] - pipPos[0], dipPos[1] - pipPos[1], dipPos[2] - pipPos[2] + 0.020],
+                        [(tipPos[0] - pipPos[0]) * 0.96, (tipPos[1] - pipPos[1]) * 0.96, tipPos[2] - pipPos[2] + 0.017],
+                    ], ra * 0.78, handArteryMat);
+                    addHandVessel(pip, [
+                        [0, 0, -0.016],
+                        [dipPos[0] - pipPos[0], dipPos[1] - pipPos[1], dipPos[2] - pipPos[2] - 0.016],
+                        [(tipPos[0] - pipPos[0]) * 0.96, (tipPos[1] - pipPos[1]) * 0.96, tipPos[2] - pipPos[2] - 0.014],
+                    ], rv * 0.78, handVeinMat);
+                }
+
+                // Superficial palmar arch (red) + dorsal venous arch (blue):
+                // gentle arcs across the metacarpal heads tying the digital
+                // vessels together at the knuckle line, like the real thing.
+                {
+                    const archA = [], archV = [];
+                    for (let f = 0; f < 4; f++) {
+                        const ky = handBaseOff - mcL[f] * handLengthScale;
+                        archA.push([fXOff[f], ky + 0.024, fSpread[f] + 0.028]);
+                        archV.push([fXOff[f], ky + 0.042, fSpread[f] - 0.021]);
+                    }
+                    // Continue toward the thumb base on whichever x-side the
+                    // thumb sits for this hand.
+                    const thumbA = [side * 0.115, handBaseOff - 0.085 * handLengthScale, 0.046];
+                    const thumbV = [side * 0.105, handBaseOff - 0.065 * handLengthScale, -0.030];
+                    if (side > 0) { archA.push(thumbA); archV.push(thumbV); }
+                    else { archA.unshift(thumbA); archV.unshift(thumbV); }
+                    addHandVessel(handGroup, archA, 0.0050, handArteryMat);
+                    addHandVessel(handGroup, archV, 0.0046, handVeinMat);
                 }
 
                 // Wrist pivot: lets the hand articulate about the wrist line
@@ -6581,21 +6689,24 @@
                 const kneeY = P.legY - (templateHipY - 2.0) * ll;
                 const ankleY = P.legY - (templateHipY - 0.25) * ll;
 
-                // Hip: femoral head seated in the pelvis acetabulum (socket
-                // world position derived from the live pelvis params: the
-                // pelvis group carries scale.x 1.16 and z offset 0.38), an
-                // angled femoral neck back to the shaft, and both trochanters.
-                const acetX = side * P.pelvisWidth * 0.45 * 1.16;
-                const acetY = P.pelvisY - 0.35;
-                const acetZ = 0.05 + 0.38;
+                // Hip: femoral head seated in the pelvis acetabulum. The
+                // pelvis's on-screen placement comes from its PINNED transform
+                // in anatomy-settings.json (scale [0.92, 1.08, 1], z -0.626),
+                // not from rebuildPelvis's authored offsets — so these are the
+                // MEASURED socket coordinates under that pin (body frame
+                // ±0.679, 4.391, -0.522). The heads floated 0.86 in front of
+                // their sockets while this was derived from the authored z.
+                const acetX = side * P.pelvisWidth * 0.45 * 0.92;
+                const acetY = P.pelvisY - 0.01;
+                const acetZ = -0.52;
                 const femoralHead = new THREE.Mesh(
                     createOrganicSphere(0.130, 0.125, 0.128, 26, 0.002, 730 + side),
                     limbBoneMat
                 );
-                femoralHead.position.set(acetX, acetY, acetZ - 0.09);
+                femoralHead.position.set(acetX, acetY, acetZ - 0.06);
                 const femoralNeck = new THREE.Mesh(createTube([
-                    [acetX, acetY, acetZ - 0.12],
-                    [xOff + side * 0.02, hipY - 0.05, (acetZ - 0.12) * 0.45],
+                    [acetX, acetY, acetZ - 0.10],
+                    [xOff + side * 0.02, hipY - 0.05, (acetZ - 0.10) * 0.45],
                     [xOff, hipY - 0.12, 0.0],
                 ], 0.052, 12, 8), limbBoneMat);
                 const greaterTrochanter = new THREE.Mesh(
@@ -9929,6 +10040,14 @@
         renderer.domElement.addEventListener('click', (event) => {
             if (sculptState.enabled) return;
             if (arrangeState.ignoreNextClick) return;
+            // QUIZ answer via nose/cursor: resolve by nearest organ CENTRE, not
+            // the frontmost raycast hit, so occluded organs are pickable. (The
+            // third input, a fist on your own body, is scored on the grab path.)
+            if (quiz.active && !arrangeState.enabled) {
+                const picked = quizOrganAtScreen(event.clientX, event.clientY);
+                if (picked) answerQuiz(regionForOrgan(picked), picked);
+                return;
+            }
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
@@ -9961,8 +10080,9 @@
                     if (organId) selectArrangeOrgan(organId);
                 } else {
                     const organId = intersects[0].object.userData.organId;
-                    // Clicking (or nose-selecting) an organ in the 3D view gives the
-                    // presentation treatment: big, rotating, body dimmed but visible.
+                    // Clicking (or nose-selecting) an organ gives the
+                    // presentation: big, rotating, body dimmed but visible.
+                    // (The quiz answer path returned earlier, above.)
                     if (organId && organInfo[organId]) beginPresentation(organId, { pinned: true });
                 }
             }
@@ -10044,6 +10164,7 @@
             get presentation() { return presentation; },
             bodyFrame: (pose, point) => handToBodyFrame(pose, point),
             handCurl: hand => handCurl(hand),
+            fistEvidence: (hand, gesture) => grabFistEvidence(hand, gesture),
             drawPip: result => drawPosePip(result),
             // Screen position of a rig joint, for driving UI tests.
             lastIkTarget: () => ({ x:_ik.target.x, y:_ik.target.y, z:_ik.target.z }),
@@ -10204,9 +10325,10 @@
             lastAppliedTime: 0,
             yawTarget: 0,
             lastYaw: 0,
-            pipVisible: true,
+            pipVisible: false,   // camera image starts hidden; ▾ button reveals it
             modelTier: '',
             message: '',
+            armDiagnostics: {},
             // Smoothed per-finger curl 0..1 for model L/R (mirror of user).
             fingerCurl: { L: [0, 0, 0, 0, 0], R: [0, 0, 0, 0, 0] },
         };
@@ -10229,6 +10351,7 @@
         const _sFwd = new THREE.Vector3(), _sRight = new THREE.Vector3();
         const _sEuler = new THREE.Euler(), _sIdentity = new THREE.Quaternion();
         const _sVec = new THREE.Vector3();
+        const _sWorldUp = new THREE.Vector3(0, 1, 0);
 
         // MediaPipe world landmarks are metres with the hip midpoint at the
         // origin, x to image-right, y down, z away from camera. The model uses
@@ -10305,7 +10428,17 @@
             let vis = 1;
             for (const i of indices) vis = Math.min(vis, landmarkConfidence(landmarks[i]));
             const was = tracker.confidence[key] === true;
-            const now = was ? vis > 0.45 : vis > 0.65;
+            // Thresholds lowered (was 0.65 / 0.45): the camera reports one of a
+            // person's arms at lower confidence than the other — usually the
+            // side that's less lit or slightly turned — and at 0.65 that arm
+            // kept getting BENCHED (frozen to rest, hanging down) while the
+            // other tracked, so a symmetric pose looked lopsided. The two arm
+            // paths are identical; only this gate differed by confidence. At
+            // 0.35 / 0.20 a moderately-seen arm keeps FOLLOWING (a touch
+            // noisier, which the One-Euro filter + deadband absorb) instead of
+            // freezing, so both arms move together. A truly absent/occluded arm
+            // (confidence well under 0.20) still relaxes to rest as before.
+            const now = was ? vis > 0.20 : vis > 0.35;
             tracker.confidence[key] = now;
             return now;
         }
@@ -10354,6 +10487,20 @@
             if (!pivot) return;
             const up = upVec.clone().normalize();
             const right = rightVec.clone().normalize();
+            // Stability bias: a standing person's shoulder-to-hip line should
+            // be dead vertical, but monocular Z-depth (the noisiest axis for
+            // someone squared up to the camera — exactly "standing straight")
+            // jitters 'up' a few degrees off true vertical every frame. That
+            // noise was going straight into the cross product below and
+            // coming out as a visible torso lean even while the user stood
+            // still and straight. When 'up' is ALREADY close to vertical,
+            // pull the rest of the way — this only tightens an already-near-
+            // straight pose toward straight; a real, deliberate lean (up far
+            // from vertical) is left untouched.
+            const vAlign = up.y;
+            if (vAlign > 0.965) {
+                up.lerp(_sWorldUp, ((vAlign - 0.965) / 0.035) * 0.7).normalize();
+            }
             const fwd = _sFwd.crossVectors(right, up).normalize();
             if (fwd.lengthSq() < 1e-6) return;
             const orthoRight = _sRight.crossVectors(up, fwd).normalize();
@@ -10407,6 +10554,7 @@
                 L: {
                     t: new THREE.Vector3(), p: new THREE.Vector3(), h: new THREE.Vector3(),
                     bend: new THREE.Vector3(), has: false, hasBend: false, lastGood: 0,
+                    userExt: 0,   // the user's own arm straightness, 0..1
                     bendMode: 'free', faceLock: false, faceSeen: 0, faceU: 0, faceV: 0,
                     pendingT: { v: new THREE.Vector3(), count: 0 },
                     pendingP: { v: new THREE.Vector3(), count: 0 },
@@ -10414,6 +10562,7 @@
                 R: {
                     t: new THREE.Vector3(), p: new THREE.Vector3(), h: new THREE.Vector3(),
                     bend: new THREE.Vector3(), has: false, hasBend: false, lastGood: 0,
+                    userExt: 0,   // the user's own arm straightness, 0..1
                     bendMode: 'free', faceLock: false, faceSeen: 0, faceU: 0, faceV: 0,
                     pendingT: { v: new THREE.Vector3(), count: 0 },
                     pendingP: { v: new THREE.Vector3(), count: 0 },
@@ -10568,16 +10717,27 @@
             const wrist = pose?.[wristIndex];
             const hands = filteredGestureHands(grab.latest);
             if (!wrist || !Array.isArray(hands)) return null;
+            // Mirror rig mapping: user right wrist (Pose 16) drives model L;
+            // user left wrist (Pose 15) drives model R.
+            const modelSide = wristIndex === LM.rightWrist ? 0
+                : wristIndex === LM.leftWrist ? 1 : -1;
             let best = null, bestDistance = Infinity;
-            for (const hand of hands) {
+            for (let h = 0; h < hands.length; h++) {
+                const hand = hands[h];
                 const handWrist = hand?.[0];
                 if (!handWrist) continue;
+                // Handedness remains usable when Pose's wrist jumps behind an
+                // occluding hand at the forehead. Prefer that stable identity;
+                // distance is only used to choose between duplicate labels.
+                if (modelSide >= 0 &&
+                    gestureModelSide(pose, hand, h) !== modelSide) continue;
                 const distance = Math.hypot(handWrist.x - wrist.x, handWrist.y - wrist.y);
                 if (distance < bestDistance) { bestDistance = distance; best = hand; }
             }
+            if (best && modelSide >= 0) return best;
             const ls = pose[LM.leftShoulder], rs = pose[LM.rightShoulder];
             const shoulderSpan = ls && rs ? Math.hypot(ls.x - rs.x, ls.y - rs.y) : 0.2;
-            return bestDistance <= Math.max(0.10, shoulderSpan * 0.65) ? best : null;
+            return bestDistance <= Math.max(0.16, shoulderSpan * 0.90) ? best : null;
         }
 
         // Detect a hand overlapping the user's face using 2D landmarks. This is
@@ -10587,7 +10747,7 @@
         function measuredFaceContact(pose, wristIndex, indexIndex, pinkyIndex, holding) {
             if (!pose) return null;
             const hand = gestureHandForPoseWrist(pose, wristIndex);
-            let point = null;
+            const candidates = [];
             if (hand) {
                 // Average four MCPs plus four fingertips. This tracks the visual
                 // centre of an open hand even when one fingertip is occluded.
@@ -10598,23 +10758,34 @@
                     if (!p) continue;
                     x += p.x; y += p.y; count++;
                 }
-                if (count) point = { x: x / count, y: y / count };
+                if (count) candidates.push({ x: x / count, y: y / count });
             }
-            if (!point) {
-                const index = pose[indexIndex], pinky = pose[pinkyIndex];
-                if (index && pinky) {
-                    point = { x: (index.x + pinky.x) * 0.5, y: (index.y + pinky.y) * 0.5 };
-                } else {
-                    point = index || pinky || pose[wristIndex];
-                }
+            // Pose and Hand Landmarker fail differently under occlusion. Do not
+            // discard a valid Pose fingertip merely because a (possibly stale)
+            // gesture hand exists but its averaged centre lies outside the face.
+            const index = pose[indexIndex], pinky = pose[pinkyIndex];
+            if (index && pinky) {
+                candidates.push({
+                    x: (index.x + pinky.x) * 0.5,
+                    y: (index.y + pinky.y) * 0.5,
+                });
+            } else if (index || pinky) {
+                candidates.push(index || pinky);
             }
-            const frame = point ? handToBodyFrame(pose, point) : null;
-            if (!frame) return null;
+            if (pose[wristIndex]) candidates.push(pose[wristIndex]);
             const uLimit = holding ? 0.68 : 0.58;
-            const vMin = holding ? -1.42 : -1.34;
+            // Include the forehead/crown. At full-body camera distance the
+            // hand centre can legitimately sit ~1.5 torso lengths above the
+            // shoulder line; the old -1.34 edge dropped exactly those samples
+            // and let the unconstrained wrist target sail over the avatar.
+            const vMin = holding ? -1.62 : -1.52;
             const vMax = holding ? -0.16 : -0.22;
-            return Math.abs(frame.u) <= uLimit && frame.v >= vMin && frame.v <= vMax
-                ? frame : null;
+            for (const point of candidates) {
+                const frame = handToBodyFrame(pose, point);
+                if (frame && Math.abs(frame.u) <= uLimit &&
+                    frame.v >= vMin && frame.v <= vMax) return frame;
+            }
+            return null;
         }
 
         function updateFaceContactLock(st, pose, wristIndex, indexIndex, pinkyIndex, timestamp) {
@@ -10746,6 +10917,24 @@
             const minReach = Math.abs(lab - lcb) + 0.001;
             let distance = _k.at.length();
             if (distance < 1e-6) return false;
+            // Match the user's OWN arm extension. The avatar's arms are
+            // proportionally LONGER than the retargeted target reaches: a full
+            // human T-pose spanned only ~92% of the avatar's arm, so the elbow
+            // bent to ~111 degrees — the drooping "chicken-wing" arms. Pull the
+            // target out to the same extension fraction the user's real arm has
+            // (1.0 = dead straight, measured from their landmarks each frame),
+            // so a straight arm reads as straight. Only near-straight arms get
+            // this floor; a folded arm (hand on chest, low extension) stays
+            // exactly where it was placed, so touch accuracy is preserved.
+            const userExt = _ik.smooth[tag].userExt || 0;
+            // A surface contact is an absolute endpoint constraint. Pose often
+            // hallucinates a nearly-straight elbow when the forearm crosses the
+            // face/torso; applying that noisy extension floor AFTER computing
+            // the contact pushed the hand beyond the head or organ. Extension
+            // matching is useful only for unconstrained free motion.
+            if (contactMode === 'free' && userExt > 0.80) {
+                distance = Math.max(distance, userExt * maxReach);
+            }
             distance = THREE.MathUtils.clamp(distance, minReach, maxReach);
             _k.direction.copy(_k.at).normalize();
 
@@ -10852,10 +11041,37 @@
             return true;
         }
 
+        // The left/right DEPTH difference (z) is the least reliable thing a
+        // single camera reports. A ~10 cm error twisted the whole avatar
+        // 30-40 degrees even while the person stood square to the lens (their
+        // flat 2D silhouette was perfectly forward) — that is the "he leans
+        // when I'm straight" bug. Only depth BEYOND a large fraction of the
+        // body's own width counts as a genuine turn; the rest is dropped as
+        // noise, so a forward stance stays forward while a deliberate turn
+        // (which makes the body narrow in x and wide in z) still rotates it.
+        function dampFacingDepth(zDiff, xWidth) {
+            const thresh = Math.abs(xWidth) * 0.8;
+            return Math.sign(zDiff) * Math.max(0, Math.abs(zDiff) - thresh);
+        }
+
         function applyTrackedPose(result, poseTimestamp = performance.now() / 1000) {
             if (!rig.built) return;
             const world = result?.worldLandmarks?.[0];
             const poseRaw = result?.landmarks?.[0];
+            // Expose the head landmarks (image space) so the host Explorer can
+            // drive its NOSE POINTER off THIS camera while Motion Capture owns
+            // it — the two apps share one webcam, and opening a second stream
+            // stalls the mirror on macOS. Pose gives nose=0 and the outer eye
+            // corners (3 = left, 6 = right), which is exactly what the nose
+            // pointer needs (nose tip relative to the eye line).
+            if (poseRaw && poseRaw[0] && poseRaw[3] && poseRaw[6]) {
+                window.__POSE_HEAD_LM__ = {
+                    nose: { x: poseRaw[0].x, y: poseRaw[0].y },
+                    leftEyeOuter: { x: poseRaw[3].x, y: poseRaw[3].y },
+                    rightEyeOuter: { x: poseRaw[6].x, y: poseRaw[6].y },
+                    ts: Date.now(),   // wall-clock: the host reads this across the iframe boundary
+                };
+            }
             const pose = filteredImageLandmarks(poseRaw);
             // A short or empty landmark array would otherwise throw partway
             // through and take the whole render loop down with it.
@@ -10888,7 +11104,9 @@
                 const rhY = filteredPoint(world, S.hip[1], new THREE.Vector3());
                 const hipDir = lhY.clone().sub(rhY);
                 if (hipDir.lengthSq() > 1e-6) {
-                    const yaw = Math.atan2(-hipDir.z, hipDir.x);
+                    // Ignore small depth differences so noisy monocular z does
+                    // not spin the body while the user faces the camera.
+                    const yaw = Math.atan2(-dampFacingDepth(hipDir.z, hipDir.x), hipDir.x);
                     const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
                     const yawDelta = wrap(yaw - wrap(tracker.lastYaw));
                     if (Math.abs(yawDelta) > 0.012) {
@@ -10908,6 +11126,9 @@
                 const hipMid = lh.clone().add(rh).multiplyScalar(0.5);
                 const up = shoulderMid.clone().sub(hipMid);
                 const right = ls.clone().sub(rs);
+                // Same depth-noise guard for the torso twist: a shoulder line
+                // that is only slightly rotated in depth is treated as square.
+                right.z = dampFacingDepth(right.z, right.x);
                 if (up.lengthSq() > 1e-6 && right.lengthSq() > 1e-6) {
                     // Split the lean between pelvis and chest so the spine
                     // curves rather than hinging at a single point.
@@ -10940,6 +11161,9 @@
             const avatarFrameOk = torsoFrame && buildAvatarTorsoFrame();
             sides.forEach((tag, i) => {
                 const st = _ik.smooth[tag];
+                const bodyContact = bodyContactForSide(i);
+                const contactOrganIdForArm = grab.touch.active && grab.touch.side === i
+                    ? grab.touch.organId : bodyContact?.organId;
                 const faceContact = Array.isArray(pose) && pose.length >= 25
                     ? updateFaceContactLock(
                         st, pose, S.wrist[i], S.index[i], S.pinky[i], poseTimestamp)
@@ -10953,16 +11177,52 @@
                 // face. In that one well-constrained case, presence plus the
                 // exact 2D contact lock is safer than dropping the whole arm.
                 const faceArmSupport = faceContact &&
-                    (world[S.shoulder[i]]?.presence ?? 1) > 0.45 &&
-                    (world[S.elbow[i]]?.presence ?? 1) > 0.35 &&
-                    (world[S.wrist[i]]?.presence ?? 1) > 0.30;
-                const armOk = avatarFrameOk && (normalArmConfidence || faceArmSupport);
+                    (world[S.shoulder[i]]?.presence ?? 1) > 0.25 &&
+                    ((world[S.elbow[i]]?.presence ?? 1) > 0.08 || st.has);
+                // A cross-body hand is commonly hidden by the torso from the
+                // pose model, especially on one camera side. GestureRecognizer
+                // still sees the palm on the body and gives us a precise organ
+                // target, so do not bench that arm merely because wrist
+                // visibility fell. The previous elbow plane supplies continuity.
+                const bodyContactSupport = !!contactOrganIdForArm &&
+                    (world[S.shoulder[i]]?.presence ?? 1) > 0.25 &&
+                    ((world[S.elbow[i]]?.presence ?? 1) > 0.08 || st.has);
+                tracker.armDiagnostics[tag] = {
+                    normal: normalArmConfidence,
+                    faceSupport: !!faceArmSupport,
+                    bodySupport: bodyContactSupport,
+                    bodyOrgan: contactOrganIdForArm || null,
+                    shoulder: landmarkConfidence(world[S.shoulder[i]]),
+                    elbow: landmarkConfidence(world[S.elbow[i]]),
+                    wrist: landmarkConfidence(world[S.wrist[i]]),
+                };
+                const armOk = avatarFrameOk &&
+                    (normalArmConfidence || faceArmSupport || bodyContactSupport);
                 let placed = false;
                 if (armOk) {
                     const wrist = filteredPoint(world, S.wrist[i], _v1);
                     const elbow = wrist ? filteredPoint(world, S.elbow[i], _v2) : null;
                     if (wrist && elbow) {
-                        retargetToAvatar(torsoFrame, elbow, _ik.poleRaw);
+                        // How straight the USER's arm is (1 = fully extended),
+                        // from their own shoulder/elbow/wrist. The shoulder is
+                        // already in _ik.lsv / _ik.rsv from the torso frame, so
+                        // this is just three distances. solveArmIK uses it to
+                        // extend the avatar to the same fraction of its (longer)
+                        // arm, so a straight arm looks straight.
+                        const uSh = (i === 0) ? _ik.lsv : _ik.rsv;
+                        const uSeg = uSh.distanceTo(elbow) + elbow.distanceTo(wrist);
+                        st.userExt = uSeg > 1e-5
+                            ? Math.min(1, uSh.distanceTo(wrist) / uSeg) : 0;
+
+                        const elbowPresence = world[S.elbow[i]]?.presence ?? 1;
+                        if ((bodyContactSupport || faceArmSupport) &&
+                            elbowPresence < 0.18 && st.has) {
+                            // Do not let a hallucinated, occluded elbow flip or
+                            // shorten the arm just as its hand reaches the torso.
+                            _ik.poleRaw.copy(st.p);
+                        } else {
+                            retargetToAvatar(torsoFrame, elbow, _ik.poleRaw);
+                        }
                         retargetToAvatar(torsoFrame, wrist, _ik.wristRaw);
 
                         // Pose index/pinky endpoints are the part the user
@@ -11014,13 +11274,19 @@
                         // Touch snap: while the user's hand rests on a body region,
                         // place the FINGERTIP on the organ's anterior surface.
                         // (nearestPoseSide mirrors the hand to this arm below.)
-                        if (grab.touch.active && grab.touch.side === i &&
-                            organs[grab.touch.organId] &&
-                            !(faceContact && grab.touch.organId === 'brain')) {
+                        const contactOrganId = contactOrganIdForArm;
+                        if (contactOrganId && organs[contactOrganId] &&
+                            !(faceContact && contactOrganId === 'brain')) {
                             organContactPointInRig(
-                                organs[grab.touch.organId], _touchAnchor);
+                                organs[contactOrganId], _touchAnchor);
                             _ik.contactRaw.copy(_touchAnchor);
-                            _ik.handRaw.copy(_ik.contactRaw).sub(_ik.wristRaw);
+                            // For a known surface contact, aim from the avatar's
+                            // own shoulder to the organ. That direction remains
+                            // symmetric and stable even when the user's occluded
+                            // wrist depth is the very signal that failed.
+                            objectPositionInRig(
+                                rig.pivots[`${tag}_UpperArm`], _ik.tmp);
+                            _ik.handRaw.copy(_ik.contactRaw).sub(_ik.tmp);
                             if (_ik.handRaw.lengthSq() > 1e-6) _ik.handRaw.normalize();
                             fingertipDriven = true;
                             constrainedContact = true;
@@ -11069,7 +11335,8 @@
                         st.lastGood = poseTimestamp;
                         placed = solveArmIK(
                             tag, st.t, st.p, st.h, 0.48, dt,
-                            faceContact ? 'face' : 'free');
+                            faceContact ? 'face' :
+                                (constrainedContact ? 'body' : 'free'));
                     }
                 }
                 if (!placed) {
@@ -11126,10 +11393,11 @@
         }
 
         // ============================================================
-        // LEARN MODE — grab an organ off your own body
-        // Reach to a spot on your torso, close your hand, and pull away: the
-        // organ that lives under that spot lifts out of the model, spins, and
-        // is narrated. Bring your hand back to your body to put it back.
+        // LEARN MODE — learn from a touch or present an organ from your body.
+        // Rest an open hand on a body location to hear about it, or hold a fist
+        // there to lift that organ into a complete narrated presentation. The
+        // presentation ends with narration; an open hand followed by a second
+        // fist can return it early or switch to a different body location.
         //
         // Hit testing is done in a coordinate frame built from the user's own
         // shoulders and hips, so it is invariant to how far away they stand,
@@ -11147,13 +11415,14 @@
                 key,
                 Array.from({ length: 21 }, () => [
                     new OneEuro(0.72, 0.26), new OneEuro(0.72, 0.26),
+                    new OneEuro(0.72, 0.26),
                 ]),
             ])),
             handFilterSeen: {},
             handFilterSrc: null,
             filteredHands: [
-                Array.from({ length: 21 }, () => ({ x: 0, y: 0 })),
-                Array.from({ length: 21 }, () => ({ x: 0, y: 0 })),
+                Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 })),
+                Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 })),
             ],
             state: 'idle',        // idle | hover | holding | releasing
             hoverId: null,
@@ -11161,18 +11430,27 @@
             fistSince: 0,
             activeId: null,
             reach: 0,             // 0..1, how far the hand is held from the torso
-            pulledAway: false,    // hand must leave the body before it can return
             handIndex: -1,        // which hand did the grabbing
+            handSide: -1,         // stable model-side identity; result order can swap
             armed: true,          // false until an open hand re-arms grabbing
             fistMissAt: 0,
-            holdStart: 0,
-            lostSince: 0,
+            presentationArmed: false,       // release once before an intentional stop/switch
+            presentationStartedAt: 0,
+            presentationGesture: null,
+            presentationGestureSince: 0,
             label: '',
             // Touch-and-hold: resting an open hand on a body region for ~1s
             // publishes the touched organ (for the host page's voice guide) and
             // snaps the avatar's matching hand onto that organ.
             touch: { active: false, organId: null, side: -1 },
             touchPublishedId: null,
+            // Gesture hands remain reliable when a cross-body wrist becomes
+            // partly occluded from the pose model. Keep a brief per-arm body
+            // contact candidate so positional IK can still finish at the organ.
+            bodyContact: [
+                { organId: null, firstSeenAt: 0, seenAt: 0 },
+                { organId: null, firstSeenAt: 0, seenAt: 0 },
+            ],
         };
 
         function filteredGestureHands(result) {
@@ -11183,7 +11461,7 @@
             const time = performance.now() / 1000;
             const handedness = result?.handednesses || result?.handedness;
             while (grab.filteredHands.length < hands.length) {
-                grab.filteredHands.push(Array.from({ length: 21 }, () => ({ x: 0, y: 0 })));
+                grab.filteredHands.push(Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 })));
             }
             for (let h = 0; h < hands.length; h++) {
                 const label = handedness?.[h]?.[0]?.categoryName;
@@ -11199,6 +11477,7 @@
                     if (!raw) continue;
                     output[i].x = bank[i][0].filter(raw.x, time);
                     output[i].y = bank[i][1].filter(raw.y, time);
+                    output[i].z = bank[i][2].filter(raw.z ?? 0, time);
                 }
             }
             return grab.filteredHands.slice(0, hands.length);
@@ -11219,7 +11498,7 @@
         // in `organs`, and listRearnableOrgans() keeps the on-screen list honest.
         const ORGAN_REGIONS = [
             // Head and neck
-            { id: 'brain',         u: [-0.45, 0.45],  v: [-1.20, -0.30], label: 'Brain' },
+            { id: 'brain',         u: [-0.50, 0.50],  v: [-1.52, -0.30], label: 'Brain' },
             { id: 'thyroid',       u: [-0.28, 0.28],  v: [-0.26, -0.06], label: 'Thyroid' },
             { id: 'trachea',       u: [-0.22, 0.22],  v: [-0.05, 0.12],  label: 'Trachea' },
             // Thorax
@@ -11309,15 +11588,41 @@
         // hand belongs to: nearest pose wrist wins. Robust to mirroring because
         // both models share the same normalized video space.
         function nearestPoseSide(pose, hand) {
-            const palm = hand?.[9] || hand?.[0];
+            // Match wrist to wrist. Using the palm centre here made a
+            // cross-body fist cross the midline before its wrist did, so the
+            // contact could be assigned to the opposite avatar arm.
+            const wrist = hand?.[0] || hand?.[9];
             const lw = pose?.[15], rw = pose?.[16];
-            if (!palm || !lw || !rw) return -1;
-            const dl = Math.hypot(palm.x - lw.x, palm.y - lw.y);
-            const dr = Math.hypot(palm.x - rw.x, palm.y - rw.y);
+            if (!wrist || !lw || !rw) return -1;
+            const dl = Math.hypot(wrist.x - lw.x, wrist.y - lw.y);
+            const dr = Math.hypot(wrist.x - rw.x, wrist.y - rw.y);
             // Arm solver index 0 is MODEL left, driven by USER right in mirror
             // mode; index 1 is model right, driven by user left. The old direct
             // 0/1 return snapped the opposite arm toward the touched organ.
             return dl <= dr ? 1 : 0;
+        }
+
+        // GestureRecognizer handedness is defined for a selfie/mirrored image,
+        // while we pass it the camera's unmirrored video. Consequently its raw
+        // Left label is the user's physical RIGHT hand and drives model L (0);
+        // raw Right is the user's physical LEFT and drives model R (1). This is
+        // the same swap already used by the readable labels in the preview.
+        function gestureModelSide(pose, hand, handIndex, result = grab.latest) {
+            const handedness = result?.handednesses || result?.handedness;
+            const label = handedness?.[handIndex]?.[0]?.categoryName;
+            if (label === 'Left') return 0;
+            if (label === 'Right') return 1;
+            return nearestPoseSide(pose, hand);
+        }
+
+        function handIndexForPoseSide(pose, hands, side, fallback = -1) {
+            if (side >= 0) {
+                for (let h = 0; h < (hands?.length || 0); h++) {
+                    if (gestureModelSide(pose, hands[h], h) === side) return h;
+                }
+            }
+            return fallback >= 0 && hands?.[fallback]
+                ? fallback : (hands?.length ? 0 : -1);
         }
         function organTouchFacts(organId) {
             const info = organInfo[organId];
@@ -11325,12 +11630,12 @@
             const fns = Array.isArray(info.functions) ? info.functions.slice(0, 2).join('; ') : '';
             return [info.desc || '', fns].filter(Boolean).join(' ').slice(0, 500);
         }
-        function activateTouch(region, hand, pose) {
+        function activateTouch(region, hand, pose, side = -1) {
             const organId = resolveOrganId(region.id);
             if (!organId || !organs[organId]) return;
             grab.touch.active = true;
             grab.touch.organId = organId;
-            grab.touch.side = nearestPoseSide(pose, hand);
+            grab.touch.side = side >= 0 ? side : nearestPoseSide(pose, hand);
             // Publish once per touched organ; the host page (Universal Life
             // Explorer) polls this and has its voice guide explain the organ.
             if (grab.touchPublishedId !== organId) {
@@ -11346,6 +11651,33 @@
         function clearTouch() {
             grab.touch.active = false;
             grab.touch.side = -1;
+        }
+
+        function recordBodyContact(side, organId, now) {
+            const contact = grab.bodyContact?.[side];
+            if (!contact || !organId) return;
+            if (contact.organId !== organId || now - contact.seenAt > 220) {
+                contact.organId = organId;
+                contact.firstSeenAt = now;
+            }
+            contact.seenAt = now;
+        }
+
+        function expireBodyContacts(now, immediate = false) {
+            for (const contact of grab.bodyContact || []) {
+                if (!immediate && contact.organId && now - contact.seenAt <= 220) continue;
+                contact.organId = null;
+                contact.firstSeenAt = 0;
+                contact.seenAt = 0;
+            }
+        }
+
+        function bodyContactForSide(side, now = performance.now()) {
+            const contact = grab.bodyContact?.[side];
+            if (!contact?.organId || now - contact.seenAt > 220) return null;
+            // Three-ish camera frames prevents a hand merely passing over the
+            // torso from snapping an arm to an unrelated organ.
+            return now - contact.firstSeenAt >= 90 ? contact : null;
         }
 
         function resolveOrganId(regionId) {
@@ -11412,23 +11744,129 @@
         }
 
         function isFistHand(hand) {
-            return handCurl(hand) >= 0.55;
+            return grabFistEvidence(hand).isFist;
+        }
+
+        // A fist brings all four tips back over the palm. This 2-D compactness
+        // measurement is deliberately independent of the learned z coordinate
+        // and of individual finger bend directions, both of which are the
+        // signals that degrade on the user's camera-right hand near the torso.
+        function fistCompactness(hand) {
+            const wrist = hand?.[0];
+            const mcpIds = [5, 9, 13, 17];
+            const tipIds = [8, 12, 16, 20];
+            if (!wrist || mcpIds.some(id => !hand[id]) ||
+                tipIds.some(id => !hand[id])) {
+                return { score: 0, tucked: 0, ratio: Infinity };
+            }
+            const palm = mcpIds.reduce((sum, id) => {
+                sum.x += hand[id].x;
+                sum.y += hand[id].y;
+                return sum;
+            }, { x: 0, y: 0 });
+            palm.x /= mcpIds.length;
+            palm.y /= mcpIds.length;
+            const d2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            const palmLength = d2(wrist, hand[9]);
+            const palmWidth = d2(hand[5], hand[17]);
+            const scale = Math.max(palmLength, palmWidth * 0.90, 1e-5);
+            const ratios = tipIds.map(id => d2(hand[id], palm) / scale);
+            const ratio = ratios.reduce((sum, value) => sum + value, 0) / ratios.length;
+            const tucked = ratios.filter(value => value <= 0.92).length;
+            return {
+                score: THREE.MathUtils.clamp((1.34 - ratio) / 0.72, 0, 1),
+                tucked,
+                ratio,
+            };
+        }
+
+        // A grab must be backed by the physical landmark shape. The gesture
+        // classifier is deliberately only supporting evidence: accepting
+        // `Closed_Fist` on its own let one noisy classification pull an organ
+        // while the user's hand was visibly open. A very clear landmark fist
+        // can still pass if the classifier drops out at arm's length.
+        function grabFistEvidence(hand, gesture = null) {
+            const amounts = fingerCurlAmounts(hand);
+            if (!amounts) return { isFist: false, curl: 0, classifier: 0 };
+            const fingers = amounts.slice(0, 4);
+            const curl = fingers.reduce((sum, value) => sum + value, 0) / fingers.length;
+            const curled = fingers.filter(value => value >= 0.58).length;
+            const tight = fingers.filter(value => value >= 0.72).length;
+            const gestureName = gesture?.categoryName || 'None';
+            const classifier = gestureName === 'Closed_Fist'
+                ? (gesture.score ?? 0) : 0;
+            const explicitNonFist = gestureName !== 'Closed_Fist' &&
+                gestureName !== 'None' && (gesture?.score ?? 0) >= 0.55;
+            const strongGeometry = curl >= 0.72 && curled === 4 && tight >= 3;
+            const supportedGeometry = curl >= 0.64 && curled >= 3 && tight >= 2
+                && classifier >= 0.70;
+            // Hand-landmark z is learned monocular depth, not measured depth.
+            // With one palm oblique to the camera it can stretch the fingertips
+            // in z and turn a visibly closed fist into ~0% curl on only that
+            // side. A high Closed_Fist score may therefore use the independent
+            // 2-D silhouette as support. It still cannot pass with an open
+            // projected hand, preserving the no-accidental-grab safeguard.
+            const projected = fingerCurlAmounts(hand, false);
+            const projectedFingers = projected?.slice(0, 4) || [];
+            const projectedCurl = projectedFingers.length
+                ? projectedFingers.reduce((sum, value) => sum + value, 0) /
+                    projectedFingers.length : 0;
+            const projectedCurled = projectedFingers.filter(value => value >= 0.52).length;
+            const projectedTight = projectedFingers.filter(value => value >= 0.66).length;
+            const projectionSupported = classifier >= 0.84 &&
+                projectedCurl >= 0.56 && projectedCurled >= 3 && projectedTight >= 2;
+            const compact = fistCompactness(hand);
+            const strongCompactness = !explicitNonFist &&
+                compact.score >= 0.72 && compact.tucked >= 3;
+            const classifierCompactness = classifier >= 0.78 &&
+                compact.score >= 0.40 && compact.tucked >= 2;
+            return {
+                isFist: strongGeometry || supportedGeometry ||
+                    projectionSupported || strongCompactness || classifierCompactness,
+                curl,
+                projectedCurl,
+                compactness: compact.score,
+                tucked: compact.tucked,
+                classifier,
+                gestureName,
+                explicitNonFist,
+                strongGeometry,
+                supportedGeometry,
+                projectionSupported,
+                strongCompactness,
+                classifierCompactness,
+            };
         }
 
         // Continuous 0..1 curl per digit [index, middle, ring, pinky, thumb].
-        function fingerCurlAmounts(hand) {
+        function fingerCurlAmounts(hand, useDepth = true) {
             const wrist = hand?.[0], middleMcp = hand?.[9];
             if (!wrist || !middleMcp) return null;
-            const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, (a.z ?? 0) - (b.z ?? 0));
+            const depth = point => useDepth ? (point.z ?? 0) : 0;
+            const dist = (a, b) => Math.hypot(
+                a.x - b.x, a.y - b.y, depth(a) - depth(b));
+            const bendAt = (a, b, c) => {
+                const abx = a.x - b.x, aby = a.y - b.y, abz = depth(a) - depth(b);
+                const cbx = c.x - b.x, cby = c.y - b.y, cbz = depth(c) - depth(b);
+                const denom = Math.hypot(abx, aby, abz) * Math.hypot(cbx, cby, cbz);
+                if (denom < 1e-7) return 0;
+                const cosine = THREE.MathUtils.clamp((abx * cbx + aby * cby + abz * cbz) / denom, -1, 1);
+                const angle = Math.acos(cosine); // straight finger ~= PI; fist ~= PI / 2
+                return THREE.MathUtils.clamp((2.82 - angle) / 1.18, 0, 1);
+            };
             const span = dist(wrist, middleMcp);
             if (span < 1e-5) return null;
             const curls = [];
-            for (const { mcp, tip } of FINGER_CHAINS) {
-                const knuckle = hand[mcp], fingertip = hand[tip];
-                if (!knuckle || !fingertip) { curls.push(0); continue; }
+            for (const { mcp, pip, tip } of FINGER_CHAINS) {
+                const knuckle = hand[mcp], middle = hand[pip], fingertip = hand[tip];
+                if (!knuckle || !middle || !fingertip) { curls.push(0); continue; }
                 // Extended ≈ 2.1× knuckle reach; fist ≈ 0.85×. Map to 0..1.
                 const ratio = dist(fingertip, wrist) / Math.max(dist(knuckle, wrist), 1e-5);
-                curls.push(THREE.MathUtils.clamp((2.05 - ratio) / 1.15, 0, 1));
+                const reachCurl = THREE.MathUtils.clamp((2.05 - ratio) / 1.15, 0, 1);
+                // Blend reach with the PIP bend. The bend term rejects the
+                // classic false fist: a straight, open hand pointed toward the
+                // camera, whose 2-D fingertip distance happens to look short.
+                curls.push(reachCurl * 0.55 + bendAt(knuckle, middle, fingertip) * 0.45);
             }
             const tip = hand[THUMB_CHAIN.tip], mcp = hand[THUMB_CHAIN.mcp];
             if (tip && mcp) {
@@ -11443,27 +11881,25 @@
         // Drive bone + skin finger pivots from the latest GestureRecognizer hands.
         // Mirror mode: user's Right hand → model L (same as body pose).
         function applyTrackedFingers() {
-            const hands = grab.latest?.landmarks;
-            const handedness = grab.latest?.handednesses || grab.latest?.handedness;
+            const hands = filteredGestureHands(grab.latest);
             if (!Array.isArray(hands) || !hands.length) return;
+            const pose = filteredImageLandmarks(tracker.latest?.landmarks?.[0]);
 
             const seen = { L: false, R: false };
             const gestures = grab.latest?.gestures;
             for (let h = 0; h < hands.length; h++) {
                 const curls = fingerCurlAmounts(hands[h]);
                 if (!curls) continue;
-                const label = handedness?.[h]?.[0]?.categoryName || '';
-                // Selfie mirror: person-right drives model-left.
-                const side = label === 'Right' ? 'L' : label === 'Left' ? 'R' : null;
-                if (!side) continue;
+                const modelSide = gestureModelSide(pose, hands[h], h);
+                const side = modelSide === 0 ? 'L' : modelSide === 1 ? 'R' : null;
+                if (side === null) continue;
                 seen[side] = true;
-                // Classifier fist → force a tight curl so "100% FIST" matches mesh.
                 const top = gestures?.[h]?.[0];
-                const labelledFist = top?.categoryName === 'Closed_Fist' && (top.score ?? 0) > 0.45;
+                const confirmedFist = grabFistEvidence(hands[h], top).isFist;
                 const prev = tracker.fingerCurl[side];
-                const ease = labelledFist ? 0.55 : 0.32;
+                const ease = confirmedFist ? 0.55 : 0.32;
                 for (let i = 0; i < 5; i++) {
-                    const target = labelledFist ? Math.max(curls[i], 0.92) : curls[i];
+                    const target = confirmedFist ? Math.max(curls[i], 0.92) : curls[i];
                     prev[i] += (target - prev[i]) * ease;
                 }
             }
@@ -11593,7 +12029,7 @@
                 setModeBanner('<b>Arrange</b> — <kbd>M</kbd> move · <kbd>R</kbd> rotate · <kbd>S</kbd> scale · <kbd>[</kbd> <kbd>]</kbd> depth · Pin to save');
             } else if (typeof tracker !== 'undefined' && tracker.state === 'tracking'
                        && typeof grab !== 'undefined' && grab.enabled && grab.available) {
-                setModeBanner('<b>Learn Mode</b> — put a hand on your own body and <b>close your fist</b> to pull that organ out');
+                setModeBanner('<b>Learn Mode</b> — rest an open hand to learn · hold a fist to present that organ');
             } else {
                 setModeBanner('');
             }
@@ -11640,10 +12076,14 @@
         }
         // With no speech engine there are no utterance events to drive the
         // highlight, so pace it by reading speed instead (~14 chars/second).
-        function runCaptionsUnvoiced() {
+        function runCaptionsUnvoiced(onDone = null) {
             let i = 0;
             const step = () => {
-                if (i >= captions.sentences.length) return;
+                if (i >= captions.sentences.length) {
+                    captions.timer = 0;
+                    if (onDone) onDone();
+                    return;
+                }
                 setCaptionIndex(i);
                 const ms = Math.max(1600, captions.sentences[i].length * 70);
                 i++;
@@ -11686,38 +12126,71 @@
                 return this.preferred;
             },
             generation: 0,
+            activeDone: null,
+            externalToken: null,
+            completionTimer: 0,
+            finish(gen) {
+                if (gen !== this.generation || !this.speaking) return;
+                clearTimeout(this.completionTimer);
+                this.completionTimer = 0;
+                this.speaking = false;
+                this.queue.length = 0;
+                this.externalToken = null;
+                const done = this.activeDone;
+                this.activeDone = null;
+                if (done) done();
+            },
+            finishExternal(token) {
+                if (!token || token !== this.externalToken) return false;
+                this.finish(this.generation);
+                return true;
+            },
             // Every spoken line is mirrored to the caption bar. When there is no
             // speech engine at all the lesson still runs — captions are paced by
             // reading speed instead of by utterance events — so Learn Mode keeps
             // working muted, in a loud room, and for anyone who cannot hear it.
-            speak(sentences, { title = '' } = {}) {
+            speak(sentences, { title = '', onDone = null } = {}) {
                 this.stop();
                 if (!sentences || !sentences.length) return;
+                const gen = ++this.generation;
+                this.speaking = true;
+                this.activeDone = typeof onDone === 'function' ? onDone : null;
                 // Embedded in Universal Life Explorer: ONE voice only. The host
                 // page's OpenAI guide (Dr. Somatic) narrates; local TTS would
                 // talk over it and the two agents would sound "confused".
                 // Captions stay on, paced by reading speed like the muted path.
                 if (window.parent !== window) {
-                    window.__ANATOMY_SPEECH__ = { text: sentences.join(' '), title, ts: Date.now() };
+                    const token = `${Date.now()}-${gen}`;
+                    this.externalToken = token;
+                    window.__ANATOMY_SPEECH__ = {
+                        text: sentences.join(' '), title, ts: Date.now(), token,
+                    };
                     // The host page's guide (Dr. Somatic) is the voice; only show
                     // the "no voice" badge when the host voice is actually off.
                     showCaptions(title, sentences, { noVoice: !window.__HOST_VOICE_CONNECTED__ });
                     runCaptionsUnvoiced();
+                    // The host acknowledges the exact moment its audio stops.
+                    // Keep a reading-speed fallback so a disconnected host can
+                    // never strand the organ on stage indefinitely.
+                    const estimate = sentences.reduce(
+                        (total, line) => total + Math.max(1600, line.length * 70), 0);
+                    this.completionTimer = setTimeout(() => this.finish(gen), estimate + 2200);
                     return;
                 }
                 showCaptions(title, sentences, { noVoice: !this.supported });
-                if (!this.supported) { runCaptionsUnvoiced(); return; }
+                if (!this.supported) {
+                    runCaptionsUnvoiced(() => this.finish(gen));
+                    return;
+                }
                 // Sentence-sized utterances keep cancel() responsive.
-                const gen = ++this.generation;
                 this.queue = sentences.slice();
-                this.speaking = true;
                 let spokenIndex = 0;
                 const next = () => {
                     // A chain from a previous lesson must not drain this queue:
                     // cancel() delivers its end/error events asynchronously.
                     if (gen !== this.generation || !this.speaking) return;
                     const text = this.queue.shift();
-                    if (!text) { this.speaking = false; return; }
+                    if (!text) { this.finish(gen); return; }
                     setCaptionIndex(spokenIndex++);
                     const utterance = new SpeechSynthesisUtterance(text);
                     const chosen = this.pickVoice();
@@ -11732,7 +12205,8 @@
                         this.speaking = false;
                         const tag = document.getElementById('caption-muted-tag');
                         if (tag) tag.style.display = 'inline-block';
-                        runCaptionsUnvoiced();
+                        this.speaking = true;
+                        runCaptionsUnvoiced(() => this.finish(gen));
                     };
                     window.speechSynthesis.speak(utterance);
                 };
@@ -11740,13 +12214,19 @@
             },
             stop() {
                 clearTimeout(captions.timer);
-                if (!this.supported) return;
+                clearTimeout(this.completionTimer);
+                this.completionTimer = 0;
                 this.generation++;
                 this.speaking = false;
                 this.queue.length = 0;
-                window.speechSynthesis.cancel();
+                this.activeDone = null;
+                this.externalToken = null;
+                if (this.supported) window.speechSynthesis.cancel();
             },
         };
+        // The Universal Life Explorer host calls this with the token it was
+        // given after Dr. Somatic's audio has actually finished playing.
+        window.__ANATOMY_SPEECH_DONE__ = token => voice.finishExternal(token);
 
         // Build the spoken script from the organ data already in the app.
         function organScript(organId) {
@@ -11936,6 +12416,7 @@
                 if (el) el.textContent = String(value);
             };
             set('quiz-score-value', quiz.score);
+            set('quiz-wrong-value', quiz.asked - quiz.score);   // misses, so they're visibly counted
             set('quiz-streak-value', quiz.streak);
             set('quiz-asked-value', quiz.asked);
         }
@@ -11959,8 +12440,45 @@
             const prompt = document.getElementById('quiz-prompt');
             const sub = document.getElementById('quiz-sub');
             if (prompt) prompt.innerHTML = `Find your <b>${escapeHtml(quiz.target.label)}</b>`;
-            if (sub) sub.textContent = 'Put your hand there on your own body and close your fist';
+            if (sub) sub.textContent = 'Make a fist there — or hold the nose pointer 5 seconds or click that avatar organ';
             renderQuizScore();
+        }
+
+        // Map a clicked/pointed organ back to a quiz region, so a nose- or
+        // cursor-selected organ carries the same label the quiz speaks. Falls
+        // back to the organ's own name when it is not a learnable region.
+        function regionForOrgan(organId) {
+            return learnableRegions().find(r => resolveOrganId(r.id) === organId)
+                || { id: organId, label: organInfo[organId]?.name || organId };
+        }
+
+        // Resolve a screen point (nose/cursor) to the NEAREST learnable organ by
+        // its projected centre — NOT the frontmost raycast hit. The body is
+        // layered, so a ray aimed at the adrenals, pancreas, thyroid or kidneys
+        // always lands on the liver/aorta/intestine/skull in front of them,
+        // which made those quiz questions unwinnable and every answer score
+        // wrong. Nearest-centre lets you pick an organ by pointing at where it
+        // actually sits, occlusion and all.
+        const _quizProj = new THREE.Vector3();
+        const _quizBox = new THREE.Box3();
+        function quizOrganAtScreen(clientX, clientY) {
+            const nx = (clientX / window.innerWidth) * 2 - 1;
+            const ny = -(clientY / window.innerHeight) * 2 + 1;
+            camera.updateMatrixWorld(true);
+            let bestId = null, bestD = 0.40 * 0.40;   // ignore clicks far from any organ
+            for (const region of learnableRegions()) {
+                const id = resolveOrganId(region.id);
+                const organ = organs[id];
+                if (!organ) continue;
+                _quizBox.setFromObject(organ);
+                if (_quizBox.isEmpty()) continue;
+                _quizBox.getCenter(_quizProj).project(camera);
+                if (_quizProj.z > 1) continue;        // behind the camera
+                const dx = _quizProj.x - nx, dy = _quizProj.y - ny;
+                const d = dx * dx + dy * dy;
+                if (d < bestD) { bestD = d; bestId = id; }
+            }
+            return bestId;
         }
 
         function answerQuiz(region, organId) {
@@ -11992,13 +12510,15 @@
                     : `You were looking for the ${quiz.target.label.toLowerCase()}.`;
             }
             renderQuizScore();
-            // Flash the right answer on the model so a wrong guess still teaches.
+            // Flash the right answer ON THE MODEL so a wrong guess still teaches
+            // — but do NOT open the big right-side detail panel: it would sit
+            // under the quiz card in the top-right corner. The card already
+            // names the answer, and the X-ray highlight shows it on the body.
             if (!correct) {
                 selectedOrganId = wanted;
                 xrayMode = true;
                 focusIsolation = false;
                 document.getElementById('ctrl-xray')?.classList.add('active');
-                renderOrganDetail(wanted);
             }
             if (voice.supported) {
                 voice.speak([correct ? 'Correct.' : `That was the ${region.label.toLowerCase()}.`],
@@ -12010,10 +12530,15 @@
 
         function startQuiz() {
             if (quiz.active) return;
+            // The quiz no longer HARD-requires the anatomy camera: you can now
+            // answer three ways — point your nose at the organ, click it with
+            // the mouse, or (with the camera on) put your hand on your own body
+            // and make a fist. Only the last needs body tracking, so if the
+            // camera is off just hint that the on-your-body method is disabled
+            // rather than blocking the game entirely.
             if (tracker.state !== 'tracking') {
-                showNotice('Quiz Mode needs the camera.',
-                    'Click Motion Capture first, then start the quiz.', 'warn', 6000);
-                return;
+                showNotice('Quiz started — point your nose or click the organ to answer.',
+                    'Turn on Live Pose too if you want to answer by touching your own body.', 'info', 6000);
             }
             endPresentation(true);
             quiz.active = true;
@@ -12214,7 +12739,10 @@
                 // Presenting may have ended while the request was in flight.
                 if (tutor.organId !== organId) return;
                 setTutorText(`<span class="tutor-q">${escapeHtml(question)}</span>`);
-                voice.speak(toSentences(answer), { title: `${info.name || 'Answer'} · your question` });
+                voice.speak(toSentences(answer), {
+                    title: `${info.name || 'Answer'} · your question`,
+                    onDone: grab.state === 'holding' ? finishGrabPresentation : null,
+                });
             } catch (error) {
                 console.warn('Tutor request failed.', error);
                 setTutorText('<span class="tutor-dim">Could not reach the tutor.</span>');
@@ -12230,6 +12758,12 @@
         // recorded and it is eased toward a target in the same parent space.
         // That keeps the rig, pinned placements and layer toggles untouched.
         const presentation = { organ: null, home: null, spin: 0, blend: 0 };
+
+        function finishGrabPresentation() {
+            if (grab.state !== 'holding' || !presentation.organ) return;
+            endPresentation();
+            setGrabLabel('');
+        }
 
         function beginPresentation(organId, opts = {}) {
             const organ = organs[organId];
@@ -12287,7 +12821,12 @@
             focusIsolation = false;
             document.getElementById('ctrl-xray')?.classList.add('active');
             renderOrganDetail(organId);
-            voice.speak(organScript(organId), { title: organInfo[organId]?.name || '' });
+            voice.speak(organScript(organId), {
+                title: organInfo[organId]?.name || '',
+                // A hand-grab launches a complete lesson. Once launched, its
+                // lifetime belongs to narration rather than to hand position.
+                onDone: opts.completeOnNarration ? finishGrabPresentation : null,
+            });
             // The tutor is only offered while an organ is actually in hand, so
             // a question always has something concrete to be about.
             openTutorFor(organId);
@@ -12304,9 +12843,13 @@
             grab.fistSince = 0;
             grab.fistMissAt = 0;
             grab.hoverId = null;
-            grab.pulledAway = false;
             grab.handIndex = -1;
+            grab.handSide = -1;
             grab.reach = 0;
+            grab.presentationArmed = false;
+            grab.presentationStartedAt = 0;
+            grab.presentationGesture = null;
+            grab.presentationGestureSince = 0;
             // Disarmed until an open hand is seen, so releasing with a closed
             // fist cannot immediately re-trigger the same lesson.
             grab.armed = false;
@@ -12542,6 +13085,19 @@
         const _apPole = new THREE.Vector3();
         const _apArmL = new THREE.Vector3();
         const _apArmR = new THREE.Vector3();
+        const _apHandDir = new THREE.Vector3();
+        const _apShoulder = new THREE.Vector3();
+        const _apBox = new THREE.Box3();
+        // World-space VISUAL centre of an organ group — its origin can sit far
+        // from the mesh (the brain group's origin is on the floor, +10.8 below
+        // the hemispheres), so origin-targeting aimed the presenting arm at the
+        // ground. The bounding-box centre is where the organ actually appears.
+        function organVisualCenter(organ, out) {
+            _apBox.setFromObject(organ);
+            if (_apBox.isEmpty()) organ.getWorldPosition(out);
+            else _apBox.getCenter(out);
+            return out;
+        }
         const AP_POINT_MS = 1800;      // hand travels to the organ
         const AP_PRESENT_MS = 16000;   // organ out + narration
         const AP_GAP_MS = 1200;        // organ eases home before the next stop
@@ -12573,7 +13129,7 @@
             // Point with the arm on the organ's own side of the body.
             const upperL = rig.pivots?.L_UpperArm, upperR = rig.pivots?.R_UpperArm;
             if (upperL && upperR) {
-                organs[step.id].getWorldPosition(_apTarget);
+                organVisualCenter(organs[step.id], _apTarget);   // side by where the organ SHOWS
                 _apArmL.setFromMatrixPosition(upperL.matrixWorld);
                 _apArmR.setFromMatrixPosition(upperR.matrixWorld);
                 bodyAutoplay.side = (_apTarget.distanceTo(_apArmL) <= _apTarget.distanceTo(_apArmR)) ? 'L' : 'R';
@@ -12604,12 +13160,31 @@
             if (!bodyAutoplay.active || !bodyAutoplay.organId) return;
             const organ = organs[bodyAutoplay.organId];
             if (!organ || !rig.built) return;
-            organ.getWorldPosition(_apTarget);
+            // solveArmIK works entirely in RIG space (its shoulder anchor is a
+            // rig-space point) and wants a hand-DIRECTION vector as its 4th arg.
+            // The organ's world position and a bare number were being passed
+            // instead, so the reach direction came out garbage and the arm
+            // never moved — the "no arm effect" in the show. Convert to rig
+            // space and hand it a real fingers-toward-the-organ direction.
+            refreshRigInverse();
+            organVisualCenter(organ, _apTarget);   // reach the visible organ, not the group origin
+            _apTarget.applyMatrix4(_ik.rigInverse);
             _apPole.copy(_apTarget);
             _apPole.x += (bodyAutoplay.side === 'L' ? 0.9 : -0.9);
             _apPole.y -= 0.25;
             _apPole.z += 0.55;
-            solveArmIK(bodyAutoplay.side, _apTarget, _apPole, 0.3);
+            const shoulder = rig.pivots[bodyAutoplay.side + '_UpperArm'];
+            if (shoulder) {
+                objectPositionInRig(shoulder, _apShoulder);
+                _apHandDir.subVectors(_apTarget, _apShoulder);
+                if (_apHandDir.lengthSq() < 1e-6) _apHandDir.set(0, 0, 1);
+                _apHandDir.normalize();
+            } else {
+                _apHandDir.set(0, 0, 1);
+            }
+            // 5th arg is smoothing (0.3) — a gentle slerp so the arm eases out
+            // to the organ and back rather than snapping.
+            solveArmIK(bodyAutoplay.side, _apTarget, _apPole, _apHandDir, 0.3);
         }
         window.__START_BODY_AUTOPLAY__ = startBodyAutoplay;
         window.__STOP_BODY_AUTOPLAY__ = stopBodyAutoplay;
@@ -12619,33 +13194,35 @@
         function updateGrabLearning(delta) {
             updatePresentation(delta);
             if (!grab.enabled || !grab.available || tracker.state !== 'tracking') {
-                if (grab.state === 'holding') endPresentation();
+                expireBodyContacts(performance.now(), true);
                 clearTouch();
-                setGrabLabel('');
+                setGrabLabel(grab.state === 'holding'
+                    ? `${organInfo[grab.activeId]?.name || 'Organ'} — playing; returns when narration ends`
+                    : '');
                 return;
             }
             const pose = filteredImageLandmarks(tracker.latest?.landmarks?.[0]);
             const hands = filteredGestureHands(grab.latest);
             const poseOk = Array.isArray(pose) && pose.length >= 25;
             if (!poseOk || !hands?.length) {
-                // Losing sight of the hand while holding should put the organ
-                // back rather than strand it in mid-air, but only after a
-                // moment so a single dropped frame is not enough.
+                expireBodyContacts(performance.now());
                 if (grab.state === 'holding') {
-                    if (!grab.lostSince) grab.lostSince = performance.now();
-                    if (performance.now() - grab.lostSince > 900) {
-                        endPresentation();
-                        setGrabLabel('');
+                    // The gesture launches the lesson; it is not a dead-man's
+                    // switch. Occlusion, lowering the arm or leaving the frame
+                    // must not cancel speech that is already in progress.
+                    if (performance.now() - grab.presentationStartedAt > 700) {
+                        grab.presentationArmed = true;
                     }
+                    setGrabLabel(`${organInfo[grab.activeId]?.name || 'Organ'} — playing; make a fist to return early`);
                 } else {
                     setGrabLabel('');
                 }
                 return;
             }
-            grab.lostSince = 0;
-
             const now = performance.now();
+            expireBodyContacts(now);
             let bestRegion = null, bestIsFist = false, bestHandIndex = 0;
+            let bestHandSide = -1;
 
             for (let h = 0; h < hands.length; h++) {
                 const hand = hands[h];
@@ -12656,52 +13233,92 @@
                 if (!frame) continue;
                 const region = regionAt(frame.u, frame.v);
                 if (!region) continue;
-                // Geometry first: the classifier is treated only as a
-                // secondary vote, because it drops out at arm's length.
+                const poseSide = gestureModelSide(pose, hand, h);
+                if (poseSide >= 0) {
+                    recordBodyContact(poseSide, resolveOrganId(region.id), now);
+                }
                 const top = grab.latest?.gestures?.[h]?.[0];
-                const labelledFist = top?.categoryName === 'Closed_Fist' && (top.score ?? 0) > 0.4;
-                const isFist = isFistHand(hand) || labelledFist;
+                // A classifier label can support a curled landmark hand, but
+                // it can never trigger a grab on its own.
+                const isFist = grabFistEvidence(hand, top).isFist;
                 if (!bestRegion || (isFist && !bestIsFist)) {
-                    bestRegion = region; bestIsFist = isFist; bestHandIndex = h;
+                    bestRegion = region;
+                    bestIsFist = isFist;
+                    bestHandIndex = h;
+                    bestHandSide = poseSide;
                 }
             }
 
             if (grab.state === 'holding') {
                 clearTouch();   // a grabbed organ supersedes touch narration
-                // You grab the organ while your hand is still on your body, so
-                // "put it back" cannot simply mean "hand is near the torso".
-                // The hand must first travel away — only then does coming home
-                // end the lesson.
-                // Only the hand that grabbed decides when the lesson ends —
-                // otherwise a hand resting at the user's side holds the state
-                // machine hostage and the organ can never be put back.
-                const heldIndex = grab.handIndex >= 0 && hands[grab.handIndex]
-                    ? grab.handIndex : 0;
-                const palm = hands[heldIndex]?.[9] || hands[heldIndex]?.[0];
+                // Hand motion may still control presentation depth, but it no
+                // longer cancels simply because the arm comes home. After the
+                // first release, a deliberate extended re-grab returns it; a
+                // fist on another body region switches directly to that lesson.
+                // GestureRecognizer does not promise stable array ordering
+                // when two hands cross or one disappears. Follow the same
+                // anatomical wrist side that launched the grab instead of
+                // silently reading the other hand's fist on the next frame.
+                const heldIndex = handIndexForPoseSide(
+                    pose, hands, grab.handSide, grab.handIndex);
+                const heldHand = hands[heldIndex];
+                const palm = heldHand?.[9] || heldHand?.[0];
                 const frame = palm ? handToBodyFrame(pose, palm) : null;
                 if (!frame) {
-                    if (!grab.lostSince) grab.lostSince = performance.now();
-                    if (performance.now() - grab.lostSince > 900) {
+                    setGrabLabel(`${organInfo[grab.activeId]?.name || 'Organ'} — playing; make a fist to return early`);
+                    return;
+                }
+                const heldGesture = grab.latest?.gestures?.[heldIndex]?.[0];
+                const heldIsFist = grabFistEvidence(heldHand, heldGesture).isFist;
+                if (!heldIsFist && now - grab.presentationStartedAt > 300) {
+                    grab.presentationArmed = true;
+                }
+                const nearest = torsoDistance(frame);
+                grab.reach = THREE.MathUtils.clamp((nearest - 0.80) / 0.70, 0, 1);
+
+                // Selecting a different body region with a confirmed fist
+                // replaces the current lesson instead of being ignored.
+                const nextOrganId = bestRegion && bestIsFist
+                    ? resolveOrganId(bestRegion.id) : null;
+                const switchOrgan = grab.presentationArmed && nextOrganId
+                    && nextOrganId !== grab.activeId;
+                // A second fist on the SAME body location means “put this one
+                // back”. Previously only a far-away fist counted, so the most
+                // natural return gesture could never satisfy the state machine.
+                const sameOrganRegrab = grab.presentationArmed && bestIsFist &&
+                    nextOrganId === grab.activeId;
+                const stopByRegrab = grab.presentationArmed && !switchOrgan &&
+                    (sameOrganRegrab || (heldIsFist && nearest > 1.05));
+                const action = switchOrgan ? `switch:${nextOrganId}`
+                    : (stopByRegrab ? 'stop' : null);
+
+                if (action !== grab.presentationGesture) {
+                    grab.presentationGesture = action;
+                    grab.presentationGestureSince = action ? now : 0;
+                }
+                if (action && now - grab.presentationGestureSince > 350) {
+                    if (switchOrgan) {
+                        if (beginPresentation(nextOrganId, { completeOnNarration: true })) {
+                            grab.state = 'holding';
+                            grab.handIndex = bestHandIndex;
+                            grab.handSide = bestHandSide;
+                            grab.presentationStartedAt = now;
+                            grab.presentationArmed = false;
+                            setGrabLabel(`${organInfo[nextOrganId]?.name || 'Organ'} — presentation playing`);
+                        }
+                    } else {
                         endPresentation();
                         setGrabLabel('');
                     }
                     return;
                 }
-                grab.lostSince = 0;
-                const nearest = torsoDistance(frame);
-                grab.reach = THREE.MathUtils.clamp((nearest - 0.80) / 0.70, 0, 1);
-                if (nearest > 0.95) grab.pulledAway = true;
-                const graceOver = performance.now() - grab.holdStart > 600;
-                const cameHome = grab.pulledAway && nearest < 0.78;
-                if (graceOver && cameHome) {
-                    endPresentation();
-                    setGrabLabel('');
-                } else {
-                    const name = organInfo[grab.activeId]?.name || '';
-                    setGrabLabel(grab.pulledAway
-                        ? `${name} — bring your hand back to put it away`
-                        : `${name} — pull your hand away`);
-                }
+
+                const name = organInfo[grab.activeId]?.name || 'Organ';
+                setGrabLabel(action === 'stop'
+                    ? `${name} — hold to put it back…`
+                    : (switchOrgan
+                        ? `${organInfo[nextOrganId]?.name || 'Organ'} — hold to switch…`
+                        : `${name} — playing; open, then make a fist to return`));
                 return;
             }
 
@@ -12726,8 +13343,15 @@
             // Open-hand touch: resting the hand on a region for ~1s means
             // "tell me about this" — publish the organ and snap the avatar's
             // hand onto it. A fist supersedes touch (that's the grab flow).
-            if (!bestIsFist && now - grab.hoverSince > 1000) {
-                activateTouch(bestRegion, hands[bestHandIndex], pose);
+            // SUPPRESSED during the quiz: there an open hand is the player
+            // still hunting for the organ, so explaining it would both reveal
+            // the answer and replace the score feedback with a lesson — which
+            // is exactly the "it just describes the organ" bug in game mode.
+            if (quiz.active) {
+                clearTouch();
+            } else if (!bestIsFist && now - grab.hoverSince > 1000) {
+                activateTouch(
+                    bestRegion, hands[bestHandIndex], pose, bestHandSide);
             } else if (bestIsFist) {
                 clearTouch();
             }
@@ -12746,7 +13370,7 @@
                 if (!grab.fistSince) grab.fistSince = now;
                 grab.fistMissAt = 0;
                 const held = now - grab.fistSince;
-                if (held > 350) {
+                if (held > 450) {
                     const organId = resolveOrganId(bestRegion.id);
                     // Quiz mode scores the grab instead of opening a lesson.
                     if (quiz.active) {
@@ -12755,19 +13379,19 @@
                         grab.armed = false;
                         return;
                     }
-                    if (beginPresentation(organId)) {
+                    if (beginPresentation(organId, { completeOnNarration: true })) {
                         grab.state = 'holding';
                         grab.reach = 0;
-                        grab.pulledAway = false;
-                        grab.holdStart = performance.now();
-                        grab.lostSince = 0;
                         grab.handIndex = bestHandIndex;
-                        setGrabLabel(`${organInfo[organId]?.name || ''} — pull your hand away`);
+                        grab.handSide = bestHandSide;
+                        grab.presentationStartedAt = now;
+                        grab.presentationArmed = false;
+                        setGrabLabel(`${organInfo[organId]?.name || ''} — presentation playing`);
                     }
                 } else {
                     setGrabLabel(`${bestRegion.label} — hold…`);
                 }
-            } else if (grab.fistSince && now - (grab.fistMissAt || now) < 220) {
+            } else if (grab.fistSince && now - (grab.fistMissAt || now) < 180) {
                 // Brief dropout inside an in-progress grab: hold the timer.
                 if (!grab.fistMissAt) grab.fistMissAt = now;
                 setGrabLabel(`${bestRegion.label} — hold…`);
@@ -12790,7 +13414,13 @@
             const status = document.getElementById('pose-pip-status');
             if (status) status.textContent = message || (state === 'tracking' ? 'Tracking' : '');
             const pip = document.getElementById('pose-pip');
-            if (pip) pip.style.display = state === 'tracking' ? 'block' : 'none';
+            if (pip) {
+                pip.style.display = state === 'tracking' ? 'block' : 'none';
+                // Camera image is OPTIONAL: the preview opens collapsed so a
+                // customer who does not want to see the webcam never has to.
+                // Tracking runs regardless; the ▾ button expands it on demand.
+                if (state === 'tracking') pip.classList.toggle('collapsed', !tracker.pipVisible);
+            }
             // The line above hides the preview — and #pose-pip-status lives
             // inside it. Any message that matters therefore has to be repeated
             // somewhere still on screen, or the button just silently pops back
@@ -12942,6 +13572,7 @@
 
         function stopPoseTracking() {
             endPresentation(true);
+            expireBodyContacts(performance.now(), true);
             tracker.yawTarget = 0;
             tracker.lastYaw = 0;
             grab.latest = null;
@@ -13048,8 +13679,12 @@
                 const wrist = hand[0];
                 if (wrist) {
                     const [wx, wy] = px(wrist);
-                    const curl = Math.round(handCurl(hand) * 100);
-                    const fist = isFistHand(hand);
+                    const top = grab.latest?.gestures?.[h]?.[0];
+                    const evidence = grabFistEvidence(hand, top);
+                    const curl = Math.round(Math.max(
+                        evidence.curl || 0, evidence.projectedCurl || 0,
+                        evidence.compactness || 0) * 100);
+                    const fist = evidence.isFist;
                     ctx.save();
                     ctx.translate(canvas.width, 0);
                     ctx.scale(-1, 1);

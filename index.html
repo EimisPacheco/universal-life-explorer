@@ -129,14 +129,14 @@ body{background:var(--space-bg);color:var(--text-main);
     </div>
     <div class="hud-overlay">
       <h1 class="game-title">UNIVERSAL LIFE EXPLORER</h1>
-      <div class="status-indicator" id="status">System Ready</div>
+    <div class="status-indicator" id="status">SOLAR SYSTEM</div>
     </div>
   </div>
   <div class="sidebar">
     <div class="chat-header">SELECT YOUR LEARNING ADVENTURE</div>
     <div class="control-panel">
       <select class="mode-select" id="mode-select">
-        <option value="SOLAR_SYSTEM">🪐 Solar System</option>
+        <option value="SOLAR_SYSTEM" selected>🪐 Solar System</option>
         <option value="HUMAN_BODY">🫀 Human Anatomy</option>
         <option value="MOLECULES">🧪 Molecules</option>
         <option value="ATOM">⚛️ The Atom</option>
@@ -544,6 +544,17 @@ class RealtimeVoice {
     if (this._connected) this.configureSession();
   }
 
+  // Hard-stop any speech NOW: cancel generation and flush the audio already
+  // buffered for playback (otherwise a stopped show keeps talking for seconds).
+  silence() {
+    const dc = this.dataChannel;
+    if (!dc || dc.readyState !== 'open') return;
+    try {
+      dc.send(JSON.stringify({ type: 'response.cancel' }));
+      dc.send(JSON.stringify({ type: 'output_audio_buffer.clear' }));
+    } catch (e) {}
+  }
+
   get connected() {
     return this._connected;
   }
@@ -730,8 +741,14 @@ class RealtimeVoice {
           input: {
             transcription: { model: 'gpt-4o-mini-transcribe' },
             // During narration shows the mic must never auto-trigger responses
-            // (speaker echo becomes an infinite self-reply loop).
-            turn_detection: { type: 'server_vad', create_response: !this.narrationLock }
+            // (speaker echo becomes an infinite self-reply loop) AND must never
+            // interrupt/truncate the assistant's speech either — interrupt_response
+            // is a SEPARATE switch from create_response; leaving it at its default
+            // (true) meant the server kept truncating the narration mid-sentence
+            // whenever it heard the assistant's own voice bleed into the mic
+            // through the speakers (no headphones), which is what made shows
+            // sound broken/stuck even after pacing was fixed to the real audio.
+            turn_detection: { type: 'server_vad', create_response: !this.narrationLock, interrupt_response: !this.narrationLock }
           },
           output: { voice: 'marin' }
         }
@@ -783,12 +800,19 @@ class RealtimeVoice {
         if (text) {
           this.onAssistantText(text);
         }
-        // Tours pace themselves on this: fly to the next stop only after the
-        // narration actually finished (status matters: a cancelled cue must
-        // not count as "finished speaking").
+        // NOTE: response.done means the model finished GENERATING — the audio
+        // keeps PLAYING for many more seconds. Tours use this only as a weak
+        // signal (to arm a duration-estimate fallback), never to advance.
         if (this.onResponseDone) {
           this.onResponseDone(data.response && data.response.status);
         }
+        break;
+      }
+      case 'output_audio_buffer.stopped': {
+        // WebRTC-only event: the spoken audio has actually finished PLAYING in
+        // the user's speakers. This is the true "narration ended" signal.
+        this._lastActivityMs = Date.now();
+        if (this.onAudioDone) this.onAudioDone();
         break;
       }
       case 'response.function_call_arguments.done': {
@@ -1226,6 +1250,1006 @@ class ProceduralMusic {
   }
 }
 
+// Fairy tour companion for the 3D flower garden scene.
+// One plain function, pasted into module scope. Engine owns group transform;
+// this file only builds the body and animates internal parts (wings, hair,
+// sparkles, glow, wand tip). ~2.2 units tall, origin at body center, faces +Z.
+function buildFairyCompanion(THREE) {
+  const group = new THREE.Group();
+
+  // ---------- shared soft radial glow texture (single 64px canvas) ----------
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = 64;
+  glowCanvas.height = 64;
+  const gctx = glowCanvas.getContext('2d');
+  const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0.0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.3, 'rgba(255,255,255,0.6)');
+  grad.addColorStop(0.65, 'rgba(255,255,255,0.18)');
+  grad.addColorStop(1.0, 'rgba(255,255,255,0)');
+  gctx.fillStyle = grad;
+  gctx.fillRect(0, 0, 64, 64);
+  const glowTex = new THREE.CanvasTexture(glowCanvas);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+
+  // ---------- materials ----------
+  const dressMat = new THREE.MeshStandardMaterial({
+    color: 0xf2a9d8, roughness: 0.55, metalness: 0.05,
+    emissive: 0xb4508e, emissiveIntensity: 0.32,
+  });
+  const skinMat = new THREE.MeshStandardMaterial({
+    color: 0xffdfc9, roughness: 0.6, metalness: 0.0,
+    emissive: 0xff9d6e, emissiveIntensity: 0.12,
+  });
+  const hairMat = new THREE.MeshStandardMaterial({
+    color: 0xf5c85a, roughness: 0.45, metalness: 0.25,
+    emissive: 0xa06a14, emissiveIntensity: 0.25,
+  });
+  const wingMat = new THREE.MeshStandardMaterial({
+    color: 0xe4fbff, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
+    emissive: 0x8fe4f5, emissiveIntensity: 0.4,
+    roughness: 0.25, metalness: 0.15, depthWrite: false,
+  });
+
+  // ---------- body: dress, bodice, head, hair, face glow ----------
+  const dress = new THREE.Mesh(new THREE.ConeGeometry(0.46, 1.2, 20, 1), dressMat);
+  dress.position.y = -0.5; // hem at y=-1.1
+  group.add(dress);
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.3, 4, 12), dressMat);
+  torso.position.y = 0.3;
+  group.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 20, 16), skinMat);
+  head.position.y = 0.78;
+  group.add(head);
+
+  // half-sphere of warm gold hair, swept back so the face (+Z) stays open
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    hairMat
+  );
+  hair.position.set(0, 0.82, -0.02);
+  hair.rotation.x = -0.3;
+  group.add(hair);
+
+  const faceGlowMat = new THREE.SpriteMaterial({
+    map: glowTex, color: 0xffd9ae, transparent: true, opacity: 0.5,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const faceGlow = new THREE.Sprite(faceGlowMat);
+  faceGlow.position.set(0, 0.76, 0.27);
+  faceGlow.scale.set(0.32, 0.32, 1);
+  group.add(faceGlow);
+
+  // ---------- four wings on pivot groups behind the shoulders ----------
+  // Flattened, translated spheres; pivot yaw animates the flap.
+  const upperWingGeo = new THREE.SphereGeometry(0.5, 14, 10);
+  upperWingGeo.scale(1.3, 0.5, 0.09);
+  upperWingGeo.translate(0.62, 0.06, 0);
+  const lowerWingGeo = new THREE.SphereGeometry(0.5, 12, 9);
+  lowerWingGeo.scale(0.92, 0.38, 0.09);
+  lowerWingGeo.translate(0.44, -0.02, 0);
+
+  function makeWingPivot(geo, px, py, pz, tiltZ) {
+    const pivot = new THREE.Group();
+    pivot.position.set(px, py, pz);
+    pivot.rotation.z = tiltZ; // static tilt (upper pair up, lower pair down)
+    pivot.add(new THREE.Mesh(geo, wingMat));
+    group.add(pivot);
+    return pivot;
+  }
+  const WING_YAW_U = 0.55; // resting sweep-back of upper pair
+  const WING_YAW_L = 0.5;  // resting sweep-back of lower pair
+  const wingRU = makeWingPivot(upperWingGeo, 0.09, 0.46, -0.17, 0.28);
+  const wingLU = makeWingPivot(upperWingGeo, -0.09, 0.46, -0.17, 0.28);
+  const wingRL = makeWingPivot(lowerWingGeo, 0.08, 0.2, -0.16, -0.4);
+  const wingLL = makeWingPivot(lowerWingGeo, -0.08, 0.2, -0.16, -0.4);
+  wingRU.rotation.y = WING_YAW_U;
+  wingLU.rotation.y = Math.PI - WING_YAW_U; // mirrored to the left side
+  wingRL.rotation.y = WING_YAW_L;
+  wingLL.rotation.y = Math.PI - WING_YAW_L;
+
+  // ---------- soft body glow + ring of twinkling sparkles ----------
+  const glowMat = new THREE.SpriteMaterial({
+    map: glowTex, color: 0xf3c8ff, transparent: true, opacity: 0.32,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const glow = new THREE.Sprite(glowMat);
+  glow.position.set(0, 0.12, 0);
+  glow.scale.set(1.9, 1.9, 1);
+  group.add(glow);
+
+  const sparkleRing = new THREE.Group();
+  sparkleRing.position.set(0, 0.12, 0);
+  group.add(sparkleRing);
+
+  const SPARKLE_COUNT = 6;
+  const sparkles = [];
+  const sparkleMats = [];
+  const sparklePhase = [0.0, 1.15, 2.2, 3.35, 4.3, 5.4];
+  const sparkleSpeed = [0.0036, 0.0044, 0.0031, 0.0048, 0.0039, 0.0042];
+  const sparkleColor = [0xcffcff, 0xffd9f4, 0xffffff, 0xcffcff, 0xffd9f4, 0xfff6c9];
+  for (let i = 0; i < SPARKLE_COUNT; i++) {
+    const mat = new THREE.SpriteMaterial({
+      map: glowTex, color: sparkleColor[i], transparent: true, opacity: 0.8,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const s = new THREE.Sprite(mat);
+    const a = (i / SPARKLE_COUNT) * Math.PI * 2;
+    s.position.set(Math.cos(a) * 0.85, Math.sin(i * 2.1) * 0.5, Math.sin(a) * 0.85);
+    s.scale.set(0.2, 0.2, 1);
+    sparkleRing.add(s);
+    sparkles.push(s);
+    sparkleMats.push(mat);
+  }
+
+  // ---------- arms and wand (build-time placement helper) ----------
+  const UP = new THREE.Vector3(0, 1, 0);
+  const tmpV = new THREE.Vector3();
+  function placeBetween(mesh, ax, ay, az, bx, by, bz) {
+    mesh.position.set((ax + bx) * 0.5, (ay + by) * 0.5, (az + bz) * 0.5);
+    tmpV.set(bx - ax, by - ay, bz - az).normalize();
+    mesh.quaternion.setFromUnitVectors(UP, tmpV);
+  }
+
+  const armGeo = new THREE.CapsuleGeometry(0.045, 0.32, 4, 8);
+  const armR = new THREE.Mesh(armGeo, skinMat);
+  placeBetween(armR, 0.16, 0.44, 0.03, 0.34, 0.08, 0.26); // reaches forward to hold wand
+  group.add(armR);
+  const armL = new THREE.Mesh(armGeo, skinMat);
+  placeBetween(armL, -0.16, 0.44, 0.03, -0.3, 0.04, 0.16); // relaxed at her side
+  group.add(armL);
+
+  const wandShaftMat = new THREE.MeshStandardMaterial({
+    color: 0xf7f3ff, roughness: 0.4, metalness: 0.3,
+    emissive: 0xcbb7ff, emissiveIntensity: 0.25,
+  });
+  const wandShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.016, 0.024, 0.55, 8), wandShaftMat
+  );
+  placeBetween(wandShaft, 0.34, 0.08, 0.26, 0.42, 0.6, 0.48);
+  group.add(wandShaft);
+
+  const wandTipMat = new THREE.MeshStandardMaterial({
+    color: 0xfff3c0, roughness: 0.3, metalness: 0.0,
+    emissive: 0xffdf7e, emissiveIntensity: 1.6,
+  });
+  const wandTip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 10), wandTipMat);
+  wandTip.position.set(0.425, 0.635, 0.495);
+  group.add(wandTip);
+
+  const tipGlowMat = new THREE.SpriteMaterial({
+    map: glowTex, color: 0xffe9a8, transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const tipGlow = new THREE.Sprite(tipGlowMat);
+  tipGlow.position.copy(wandTip.position);
+  tipGlow.scale.set(0.38, 0.38, 1);
+  group.add(tipGlow);
+
+  // ---------- animation (cached refs only, zero per-frame allocations) ----------
+  return {
+    group,
+    locomotion: 'fly',
+    baseScale: 1.0,
+    orbitK: 1.15, // hovers close to what she's visiting
+    groundY: null,
+    animate(now, phase) {
+      // wings: fast flutter while traveling, gentle while orbiting
+      const travel = phase === 'travel';
+      const wSpeed = travel ? 0.03 : 0.018;
+      const wAmp = travel ? 0.9 : 0.5;
+      const flapU = Math.sin(now * wSpeed) * wAmp;
+      const flapL = Math.sin(now * wSpeed + 0.85) * wAmp * 0.8; // lower pair lags
+      wingRU.rotation.y = WING_YAW_U + flapU;
+      wingLU.rotation.y = Math.PI - WING_YAW_U - flapU;
+      wingRL.rotation.y = WING_YAW_L + flapL;
+      wingLL.rotation.y = Math.PI - WING_YAW_L - flapL;
+
+      // soft glow pulses gently
+      const g = 1.9 + Math.sin(now * 0.0027) * 0.16;
+      glow.scale.set(g, g, 1);
+      glowMat.opacity = 0.32 + Math.sin(now * 0.0027 + 0.7) * 0.07;
+
+      // sparkles drift around her and twinkle out of phase
+      sparkleRing.rotation.y = now * 0.0006;
+      for (let i = 0; i < SPARKLE_COUNT; i++) {
+        const tw = 0.5 + 0.5 * Math.sin(now * sparkleSpeed[i] + sparklePhase[i]);
+        const sc = 0.09 + tw * 0.18;
+        sparkles[i].scale.set(sc, sc, 1);
+        sparkleMats[i].opacity = 0.22 + tw * 0.68;
+      }
+
+      // wand tip shimmers
+      wandTipMat.emissiveIntensity = 1.6 + Math.sin(now * 0.006) * 0.5;
+      tipGlowMat.opacity = 0.62 + Math.sin(now * 0.006 + 0.4) * 0.18;
+
+      // hair sways a touch, face glow breathes
+      hair.rotation.z = Math.sin(now * 0.0016) * 0.05;
+      faceGlowMat.opacity = 0.46 + Math.sin(now * 0.0021) * 0.08;
+    },
+  };
+}
+
+function buildScientistCompanion(THREE) {
+  const group = new THREE.Group();
+  group.name = 'scientistCompanion';
+
+  // ---------------- materials ----------------
+  const coatMat  = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.62, metalness: 0.05, emissive: 0x333a44, emissiveIntensity: 0.55 });
+  const darkMat  = new THREE.MeshStandardMaterial({ color: 0x2a3140, roughness: 0.6,  metalness: 0.1,  emissive: 0x141a26, emissiveIntensity: 0.5 });
+  const skinMat  = new THREE.MeshStandardMaterial({ color: 0xf0c39a, roughness: 0.55, metalness: 0.0,  emissive: 0x3a2a20, emissiveIntensity: 0.35 });
+  const hairMat  = new THREE.MeshStandardMaterial({ color: 0xd6dade, roughness: 0.85, metalness: 0.0,  emissive: 0x2c3036, emissiveIntensity: 0.3 });
+  const rimMat   = new THREE.MeshStandardMaterial({ color: 0x1e3d46, roughness: 0.3,  metalness: 0.4,  emissive: 0x35e0ff, emissiveIntensity: 0.6 });
+  const boardMat = new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.8,  metalness: 0.0,  emissive: 0x1c1208, emissiveIntensity: 0.4 });
+  const paperMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9,  metalness: 0.0,  emissive: 0x36434c, emissiveIntensity: 0.6 });
+  const penMat   = new THREE.MeshStandardMaterial({ color: 0x39424e, roughness: 0.4,  metalness: 0.3,  emissive: 0x10141c, emissiveIntensity: 0.5 });
+  const tipMat   = new THREE.MeshStandardMaterial({ color: 0x9ff8ff, roughness: 0.3,  metalness: 0.0,  emissive: 0x3ae8ff, emissiveIntensity: 1.15 });
+  const sparkMat = new THREE.MeshStandardMaterial({ color: 0xbdf6ff, roughness: 0.4,  metalness: 0.0,  emissive: 0x49d8ff, emissiveIntensity: 0.95 });
+
+  function add(parent, geo, mat, x, y, z) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    parent.add(m);
+    return m;
+  }
+
+  // ---------------- lab-coat body (origin = body center, facing +Z) ----------------
+  add(group, new THREE.CapsuleGeometry(0.42, 0.7, 6, 18), coatMat, 0, -0.1, 0);
+  // coat "opening" front stripe
+  add(group, new THREE.BoxGeometry(0.07, 0.85, 0.06), darkMat, 0, -0.1, 0.41);
+
+  // coat flaps (sway pivots at the hem)
+  const flapGeo = new THREE.BoxGeometry(0.26, 0.42, 0.05);
+  const flapPivotL = new THREE.Group();
+  flapPivotL.position.set(0.20, -0.70, 0.16);
+  group.add(flapPivotL);
+  const flapMeshL = add(flapPivotL, flapGeo, coatMat, 0, -0.20, 0.06);
+  flapMeshL.rotation.y = 0.35;
+  const flapPivotR = new THREE.Group();
+  flapPivotR.position.set(-0.20, -0.70, 0.16);
+  group.add(flapPivotR);
+  const flapMeshR = add(flapPivotR, flapGeo, coatMat, 0, -0.20, 0.06);
+  flapMeshR.rotation.y = -0.35;
+
+  // ---------------- head + glasses + wild hair ----------------
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 0.50, 0);
+  group.add(headPivot);
+  add(headPivot, new THREE.SphereGeometry(0.31, 24, 18), skinMat, 0, 0.30, 0);
+
+  const rimGeo = new THREE.TorusGeometry(0.115, 0.02, 10, 24);
+  add(headPivot, rimGeo, rimMat, 0.145, 0.32, 0.29);
+  add(headPivot, rimGeo, rimMat, -0.145, 0.32, 0.29);
+  add(headPivot, new THREE.BoxGeometry(0.08, 0.022, 0.022), rimMat, 0, 0.345, 0.315);
+
+  const eyeGeo = new THREE.SphereGeometry(0.034, 10, 8);
+  const eyeL = add(headPivot, eyeGeo, darkMat, 0.145, 0.32, 0.275);
+  eyeL.scale.z = 0.6;
+  const eyeR = add(headPivot, eyeGeo, darkMat, -0.145, 0.32, 0.275);
+  eyeR.scale.z = 0.6;
+
+  const puffGeo = new THREE.SphereGeometry(0.11, 12, 10);
+  const puffL = add(headPivot, puffGeo, hairMat, 0.29, 0.40, -0.03);
+  puffL.scale.set(1.2, 1.0, 0.9);
+  const puffR = add(headPivot, puffGeo, hairMat, -0.29, 0.40, -0.03);
+  puffR.scale.set(1.2, 1.0, 0.9);
+  const puffB = add(headPivot, puffGeo, hairMat, 0, 0.44, -0.24);
+  puffB.scale.set(1.0, 0.9, 0.9);
+  const tuftGeo = new THREE.ConeGeometry(0.065, 0.24, 8);
+  const tuft1 = add(headPivot, tuftGeo, hairMat, 0.11, 0.62, -0.02);
+  tuft1.rotation.z = -0.55;
+  const tuft2 = add(headPivot, tuftGeo, hairMat, -0.11, 0.62, -0.02);
+  tuft2.rotation.z = 0.55;
+  const tuft3 = add(headPivot, tuftGeo, hairMat, 0, 0.64, -0.13);
+  tuft3.rotation.x = -0.5;
+
+  // ---------------- arms ----------------
+  const upperGeo = new THREE.CapsuleGeometry(0.085, 0.26, 4, 10);
+  const foreGeo  = new THREE.CapsuleGeometry(0.075, 0.22, 4, 10);
+  const handGeo  = new THREE.SphereGeometry(0.085, 10, 8);
+
+  // clipboard arm (character's +X side), raised in front as if taking notes
+  const armL = new THREE.Group();
+  armL.position.set(0.44, 0.25, 0.05);
+  armL.rotation.set(-1.15, 0, -0.35);
+  group.add(armL);
+  add(armL, upperGeo, coatMat, 0, -0.16, 0);
+  const foreL = new THREE.Group();
+  foreL.position.set(0, -0.32, 0);
+  foreL.rotation.set(-0.55, 0, 0.15);
+  armL.add(foreL);
+  add(foreL, foreGeo, coatMat, 0, -0.13, 0);
+  add(foreL, handGeo, skinMat, 0, -0.28, 0.01);
+  const clipboard = new THREE.Group();
+  clipboard.position.set(0, -0.30, 0.09);
+  clipboard.rotation.x = 1.15;
+  foreL.add(clipboard);
+  add(clipboard, new THREE.BoxGeometry(0.34, 0.46, 0.028), boardMat, 0, 0.10, 0);
+  add(clipboard, new THREE.BoxGeometry(0.29, 0.40, 0.014), paperMat, 0, 0.10, 0.02);
+  add(clipboard, new THREE.BoxGeometry(0.12, 0.05, 0.05), hairMat, 0, 0.31, 0.01);
+
+  // pen arm (character's -X side), glowing pen held up
+  const armR = new THREE.Group();
+  armR.position.set(-0.44, 0.25, 0.05);
+  armR.rotation.set(-0.35, 0, -0.55);
+  group.add(armR);
+  add(armR, upperGeo, coatMat, 0, -0.16, 0);
+  const foreR = new THREE.Group();
+  foreR.position.set(0, -0.32, 0);
+  foreR.rotation.x = -1.55;
+  armR.add(foreR);
+  add(foreR, foreGeo, coatMat, 0, -0.13, 0);
+  add(foreR, handGeo, skinMat, 0, -0.28, 0.01);
+  const pen = new THREE.Group();
+  pen.position.set(0, -0.29, 0.03);
+  pen.rotation.x = 1.6;
+  foreR.add(pen);
+  add(pen, new THREE.CylinderGeometry(0.026, 0.026, 0.28, 10), penMat, 0, 0.02, 0);
+  add(pen, new THREE.CylinderGeometry(0.02, 0.028, 0.07, 10), tipMat, 0, 0.19, 0);
+
+  // ---------------- dangling legs ----------------
+  const legGeo  = new THREE.CapsuleGeometry(0.09, 0.24, 4, 10);
+  const shoeGeo = new THREE.SphereGeometry(0.10, 12, 10);
+  const legL = new THREE.Group();
+  legL.position.set(0.17, -0.76, 0.02);
+  legL.rotation.z = 0.06;
+  group.add(legL);
+  add(legL, legGeo, darkMat, 0, -0.18, 0);
+  const shoeL = add(legL, shoeGeo, darkMat, 0, -0.37, 0.05);
+  shoeL.scale.set(0.9, 0.7, 1.3);
+  const legR = new THREE.Group();
+  legR.position.set(-0.17, -0.76, 0.02);
+  legR.rotation.z = -0.06;
+  group.add(legR);
+  add(legR, legGeo, darkMat, 0, -0.18, 0);
+  const shoeR = add(legR, shoeGeo, darkMat, 0, -0.37, 0.05);
+  shoeR.scale.set(0.9, 0.7, 1.3);
+
+  // ---------------- orbiting "idea" sparks (echo the atom) ----------------
+  const sparkRing = new THREE.Group();
+  sparkRing.position.set(0, 0.85, 0);
+  sparkRing.rotation.z = 0.18;
+  group.add(sparkRing);
+  const sparkGeo = new THREE.SphereGeometry(0.045, 8, 6);
+  add(sparkRing, sparkGeo, sparkMat, 0.62, 0, 0);
+  add(sparkRing, sparkGeo, sparkMat, -0.31, 0.07, 0.54);
+  add(sparkRing, sparkGeo, sparkMat, -0.31, -0.06, -0.54);
+
+  // ---------------- animation constants (no per-frame allocations) ----------------
+  const FORE_L_Z = 0.15;
+  const ARM_R_X = -0.35;
+  const HEAD_X = 0.05;
+  const LEG_X = 0.15;
+  const PI = Math.PI;
+  const TWO_PI = Math.PI * 2;
+
+  return {
+    group,
+    locomotion: 'fly',
+    baseScale: 1.0,
+    orbitK: 1.45,
+    groundY: null,
+    animate(now, phase) {
+      const travel = phase === 'travel';
+
+      // clipboard arm: gated writing jitter while studying, calm drift in travel
+      let jitter;
+      if (travel) {
+        jitter = Math.sin(now * 0.008) * 0.02;
+      } else {
+        const gate = Math.min(1, Math.max(0, (Math.sin(now * 0.0013) - 0.1) * 4));
+        jitter = Math.sin(now * 0.02) * 0.08 * gate;
+      }
+      foreL.rotation.z = FORE_L_Z + jitter;
+
+      // coat flaps sway, wind-blown while flying
+      const fSpeed = travel ? 0.006 : 0.003;
+      const fAmp = travel ? 0.25 : 0.13;
+      const fBase = travel ? 0.28 : 0.0;
+      flapPivotL.rotation.x = fBase + Math.sin(now * fSpeed) * fAmp;
+      flapPivotR.rotation.x = fBase + Math.sin(now * fSpeed + 1.7) * fAmp;
+
+      // head tilts down toward the clipboard, then back up
+      headPivot.rotation.x = HEAD_X + Math.sin(now * 0.0009) * 0.15;
+
+      // legs dangle-swing in opposite phases
+      legL.rotation.x = LEG_X + Math.sin(now * 0.0035) * 0.16;
+      legR.rotation.x = LEG_X + Math.sin(now * 0.0035 + PI) * 0.16;
+
+      // pen arm gentle drift
+      armR.rotation.x = ARM_R_X + Math.sin(now * 0.0016) * 0.05;
+
+      // idea sparks orbit the head and bob
+      sparkRing.rotation.y = (now * 0.0012) % TWO_PI;
+      sparkRing.position.y = 0.85 + Math.sin(now * 0.0021) * 0.05;
+
+      // subtle glow pulses on glasses rims, pen tip, and sparks
+      rimMat.emissiveIntensity = 0.6 + Math.sin(now * 0.004) * 0.2;
+      tipMat.emissiveIntensity = 1.15 + Math.sin(now * 0.005 + 1.3) * 0.35;
+      sparkMat.emissiveIntensity = 0.95 + Math.sin(now * 0.006 + 2.1) * 0.3;
+    },
+  };
+}
+
+// Pharaoh tour companion for the Egyptian pyramid scene (Three.js r160).
+// ONE plain function, pasted into module scope. The engine owns group
+// position/rotation/scale; this file only builds the body (origin at the
+// FEET, ~2.6 units tall, facing +Z) and animates internal parts.
+function buildPharaohCompanion(THREE) {
+  const group = new THREE.Group();
+  group.name = 'pharaohCompanion';
+
+  // ---------------- materials (shared) ----------------
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xb87a45, roughness: 0.72, metalness: 0.0 });
+  const linenMat = new THREE.MeshStandardMaterial({ color: 0xf2ead8, roughness: 0.88, metalness: 0.0 });
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xd9a621, metalness: 0.7, roughness: 0.32,
+    emissive: 0x7a5c08, emissiveIntensity: 0.35,
+  });
+  const lapisMat = new THREE.MeshStandardMaterial({
+    color: 0x1d4e9e, roughness: 0.45, metalness: 0.15,
+    emissive: 0x0a1c3d, emissiveIntensity: 0.4,
+  });
+  const kohlMat = new THREE.MeshBasicMaterial({ color: 0x16100a });
+
+  // Nemes stripes: tiny 8x64 canvas, horizontal gold/lapis bands.
+  let nemesMat;
+  if (typeof document !== 'undefined') {
+    const cv = document.createElement('canvas');
+    cv.width = 8;
+    cv.height = 64;
+    const cx = cv.getContext('2d');
+    for (let i = 0; i < 8; i++) {
+      cx.fillStyle = (i % 2 === 0) ? '#e0af2a' : '#1d4e9e';
+      cx.fillRect(0, i * 8, 8, 8);
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    nemesMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.3 });
+  } else {
+    nemesMat = lapisMat; // headless fallback
+  }
+
+  // Build-time helper (never called per frame).
+  function part(geo, mat, x, y, z, parent) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    (parent || group).add(m);
+    return m;
+  }
+
+  // ---------------- legs: hip pivot groups on the ROOT (feet stay planted) ----------------
+  const legGeo = new THREE.CapsuleGeometry(0.085, 0.85, 4, 10);
+  const footGeo = new THREE.BoxGeometry(0.13, 0.09, 0.28);
+
+  const legL = new THREE.Group();
+  legL.position.set(0.15, 1.18, 0);
+  group.add(legL);
+  part(legGeo, skinMat, 0, -0.62, 0, legL);
+  part(footGeo, skinMat, 0, -1.135, 0.09, legL); // sole ends at y=0
+
+  const legR = new THREE.Group();
+  legR.position.set(-0.15, 1.18, 0);
+  group.add(legR);
+  part(legGeo, skinMat, 0, -0.62, 0, legR);
+  part(footGeo, skinMat, 0, -1.135, 0.09, legR);
+
+  // ---------------- torso sub-group (bobs; never the root) ----------------
+  const torsoGrp = new THREE.Group();
+  group.add(torsoGrp);
+
+  part(new THREE.CylinderGeometry(0.21, 0.245, 0.62, 14), skinMat, 0, 1.64, 0, torsoGrp);   // bare chest
+  part(new THREE.CylinderGeometry(0.235, 0.34, 0.5, 14), linenMat, 0, 1.08, 0, torsoGrp);   // white shendyt kilt
+  part(new THREE.CylinderGeometry(0.25, 0.26, 0.1, 14), goldMat, 0, 1.345, 0, torsoGrp);    // gold belt
+  const apron = part(new THREE.BoxGeometry(0.15, 0.4, 0.035), goldMat, 0, 1.12, 0.283, torsoGrp); // front apron
+  apron.rotation.x = -0.21; // follow the kilt flare
+  part(new THREE.CylinderGeometry(0.09, 0.31, 0.12, 16), goldMat, 0, 1.97, 0, torsoGrp);    // broad usekh collar
+  const inlay = part(new THREE.TorusGeometry(0.245, 0.028, 6, 18), lapisMat, 0, 1.945, 0, torsoGrp); // lapis ring
+  inlay.rotation.x = Math.PI / 2;
+  part(new THREE.CylinderGeometry(0.07, 0.08, 0.16, 10), skinMat, 0, 2.02, 0, torsoGrp);    // neck
+
+  // ---------------- head pivot (regal survey in orbit) ----------------
+  const headGrp = new THREE.Group();
+  headGrp.position.set(0, 2.06, 0);
+  torsoGrp.add(headGrp);
+
+  const head = part(new THREE.SphereGeometry(0.185, 16, 12), skinMat, 0, 0.21, 0, headGrp);
+  head.scale.set(0.94, 1.05, 0.95);
+  part(new THREE.BoxGeometry(0.04, 0.06, 0.035), skinMat, 0, 0.19, 0.172, headGrp); // nose
+  const eyeGeo = new THREE.BoxGeometry(0.055, 0.018, 0.012); // kohl-lined eyes
+  part(eyeGeo, kohlMat, 0.068, 0.225, 0.163, headGrp);
+  part(eyeGeo, kohlMat, -0.068, 0.225, 0.163, headGrp);
+
+  // Nemes: flattened striped crown + two lappets by the cheeks + back queue.
+  part(new THREE.BoxGeometry(0.46, 0.3, 0.4), nemesMat, 0, 0.41, -0.045, headGrp); // crown (top ~y2.62)
+  const lapGeo = new THREE.BoxGeometry(0.125, 0.46, 0.045);
+  const lapL = part(lapGeo, nemesMat, 0.185, 0.05, 0.15, headGrp);
+  lapL.rotation.x = -0.12; // drape forward over the chest
+  const lapR = part(lapGeo, nemesMat, -0.185, 0.05, 0.15, headGrp);
+  lapR.rotation.x = -0.12;
+  const queue = part(new THREE.BoxGeometry(0.09, 0.34, 0.05), nemesMat, 0, 0.1, -0.27, headGrp);
+  queue.rotation.x = 0.18;
+
+  // Uraeus: tiny gold cobra rearing at the forehead.
+  part(new THREE.CapsuleGeometry(0.018, 0.05, 3, 8), goldMat, 0, 0.3, 0.168, headGrp);
+  part(new THREE.SphereGeometry(0.026, 8, 8), goldMat, 0, 0.352, 0.176, headGrp);
+
+  // ---------------- arms: shoulder pivots on the torso ----------------
+  const armGeo = new THREE.CapsuleGeometry(0.055, 0.52, 4, 10);
+  const handGeo = new THREE.SphereGeometry(0.062, 10, 8);
+  const cuffGeo = new THREE.TorusGeometry(0.064, 0.016, 6, 14);
+
+  const armL = new THREE.Group(); // his +X arm: carries the flail
+  armL.position.set(0.27, 1.9, 0);
+  armL.rotation.z = 0.12; // base out-tilt; animate() only writes rotation.x
+  torsoGrp.add(armL);
+  part(armGeo, skinMat, 0, -0.34, 0, armL);
+  part(handGeo, skinMat, 0, -0.68, 0.01, armL);
+  const cuffL = part(cuffGeo, goldMat, 0, -0.52, 0, armL);
+  cuffL.rotation.x = Math.PI / 2;
+
+  const armR = new THREE.Group(); // his -X arm: carries the crook
+  armR.position.set(-0.27, 1.9, 0);
+  armR.rotation.z = -0.12;
+  torsoGrp.add(armR);
+  part(armGeo, skinMat, 0, -0.34, 0, armR);
+  part(handGeo, skinMat, 0, -0.68, 0.01, armR);
+  const cuffR = part(cuffGeo, goldMat, 0, -0.52, 0, armR);
+  cuffR.rotation.x = Math.PI / 2;
+
+  // Crook (heqa): bent cane from two thin gold cylinders, gripped in the hand.
+  part(new THREE.CylinderGeometry(0.018, 0.018, 0.62, 8), goldMat, 0, -0.6, 0.05, armR);
+  const hook = part(new THREE.CylinderGeometry(0.016, 0.016, 0.17, 8), goldMat, 0, -0.275, 0.095, armR);
+  hook.rotation.x = 1.15; // curl forward
+
+  // Flail (nekhakha): angled handle + three splayed strands (middle lapis).
+  const flailHandle = part(new THREE.CylinderGeometry(0.016, 0.016, 0.34, 8), goldMat, 0, -0.6, -0.01, armL);
+  flailHandle.rotation.x = -0.55;
+  const strandGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.24, 6);
+  const st1 = part(strandGeo, goldMat, -0.035, -0.353, -0.16, armL);
+  st1.rotation.set(-0.62, 0, 0.18);
+  const st2 = part(strandGeo, lapisMat, 0, -0.35, -0.168, armL);
+  st2.rotation.set(-0.78, 0, 0);
+  const st3 = part(strandGeo, goldMat, 0.035, -0.353, -0.16, armL);
+  st3.rotation.set(-0.62, 0, -0.18);
+
+  // 33 meshes total.
+
+  return {
+    group,
+    locomotion: 'walk',
+    baseScale: 2.4,
+    orbitK: 1.5,
+    groundY: -15, // scene sand level; origin is at his feet
+    animate(now, phase) {
+      // Scalar math only: no per-frame allocations.
+      let legT, armT, bobT, headT;
+      if (phase === 'travel') {
+        // Stride: legs opposite, arms contralateral, double-beat torso bob.
+        const s = Math.sin(now * 0.008);
+        legT = s * 0.55;
+        armT = -s * 0.3;
+        bobT = Math.abs(Math.cos(now * 0.008)) * 0.032;
+        headT = 0; // head steady and regal
+      } else {
+        // Orbit/idle: small shuffle, arms settle, slow left/right survey.
+        const s = Math.sin(now * 0.003);
+        legT = s * 0.15;
+        armT = -s * 0.05;
+        bobT = 0.006 + Math.sin(now * 0.0022) * 0.006; // faint breathing
+        headT = Math.sin(now * 0.0008) * 0.4;
+      }
+      // One-pole easing smooths the travel<->orbit hand-off.
+      legL.rotation.x += (legT - legL.rotation.x) * 0.3;
+      legR.rotation.x += (-legT - legR.rotation.x) * 0.3;
+      armL.rotation.x += (armT - armL.rotation.x) * 0.3;
+      armR.rotation.x += (-armT - armR.rotation.x) * 0.3;
+      torsoGrp.position.y += (bobT - torsoGrp.position.y) * 0.2;
+      headGrp.rotation.y += (headT - headGrp.rotation.y) * 0.05;
+    },
+  };
+}
+
+function buildAlchemistCompanion(THREE) {
+  const group = new THREE.Group();
+  group.name = 'alchemistCompanion';
+
+  // ---------- materials ----------
+  const purpleMat = new THREE.MeshStandardMaterial({
+    color: 0x5b2d8e, roughness: 0.55, metalness: 0.12,
+    emissive: 0x2a1058, emissiveIntensity: 0.35,
+  });
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xe0b23c, roughness: 0.32, metalness: 0.85,
+    emissive: 0x8a6410, emissiveIntensity: 0.4,
+  });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf2c9a3, roughness: 0.6, metalness: 0.0 });
+  const beardMat = new THREE.MeshStandardMaterial({ color: 0xc9c9cf, roughness: 0.9, metalness: 0.0 });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x18131f });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.08, metalness: 0.05,
+    transparent: true, opacity: 0.35, depthWrite: false,
+  });
+  const liquidMat = new THREE.MeshStandardMaterial({
+    color: 0x1fae4a, emissive: 0x2bff66, emissiveIntensity: 1.1,
+    roughness: 0.25, metalness: 0.0, side: THREE.DoubleSide,
+  });
+  const bubbleMat = new THREE.MeshBasicMaterial({
+    color: 0xa4ffbe, transparent: true, opacity: 0.85, depthWrite: false,
+  });
+  const rodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.8, metalness: 0.0 });
+
+  // ---------- robe body (origin at body centre, facing +Z) ----------
+  const robe = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.25, 24), purpleMat);
+  robe.position.y = -0.12; // spans y -0.745 .. 0.505
+  group.add(robe);
+
+  // swaying hem (pivots at its top edge)
+  const hemPivot = new THREE.Group();
+  hemPivot.position.y = -0.70;
+  const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.49, 0.62, 0.42, 24), purpleMat);
+  hem.position.y = -0.21;
+  hemPivot.add(hem);
+  group.add(hemPivot);
+
+  // gold sash
+  const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.255, 0.295, 0.10, 20), goldMat);
+  sash.position.y = -0.15;
+  group.add(sash);
+
+  // gold star / moon decals stuck on the robe front
+  function addDecal(mesh, y, theta) {
+    const r = 0.5 * (0.505 - y) / 1.25 + 0.012;
+    const px = Math.sin(theta) * r;
+    const pz = Math.cos(theta) * r;
+    mesh.position.set(px, y, pz);
+    mesh.lookAt(px + Math.sin(theta) * 0.93, y + 0.37, pz + Math.cos(theta) * 0.93);
+    group.add(mesh);
+  }
+  const starGeo = new THREE.OctahedronGeometry(0.055, 0);
+  const star1 = new THREE.Mesh(starGeo, goldMat);
+  addDecal(star1, -0.32, 0.45);
+  star1.scale.set(1, 1.3, 0.32);
+  const star2 = new THREE.Mesh(starGeo, goldMat);
+  addDecal(star2, -0.56, 0.75);
+  star2.scale.set(0.85, 1.1, 0.3);
+  const moon = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.017, 6, 14, Math.PI * 1.35), goldMat);
+  addDecal(moon, -0.50, -0.42);
+  moon.rotateZ(2.1); // orient the crescent opening
+
+  // ---------- head, face, beard ----------
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 18), skinMat);
+  head.position.set(0, 0.55, 0.02);
+  group.add(head);
+
+  const eyeGeo = new THREE.SphereGeometry(0.028, 10, 8);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-0.095, 0.02, 0.25);
+  head.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeR.position.set(0.095, 0.02, 0.25);
+  head.add(eyeR);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), skinMat);
+  nose.position.set(0, -0.03, 0.27);
+  head.add(nose);
+  const beard = new THREE.Mesh(new THREE.ConeGeometry(0.10, 0.24, 10), beardMat);
+  beard.position.set(0, -0.21, 0.15);
+  beard.rotation.x = Math.PI - 0.3; // apex down, tipped slightly forward
+  head.add(beard);
+
+  // ---------- tall pointed hat, slightly tilted ----------
+  const hatGroup = new THREE.Group();
+  hatGroup.position.set(0, 0.15, 0); // head-local; base sits at world y ~0.70
+  hatGroup.rotation.z = 0.13;
+  head.add(hatGroup);
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.40, 0.05, 20), purpleMat);
+  hatGroup.add(brim);
+  const hatCone = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.40, 16), purpleMat);
+  hatCone.position.y = 0.22;
+  hatGroup.add(hatCone);
+  const hatBand = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.24, 0.09, 16), goldMat);
+  hatBand.position.y = 0.10;
+  hatGroup.add(hatBand);
+  const tipPivot = new THREE.Group();
+  tipPivot.position.y = 0.33;
+  hatGroup.add(tipPivot);
+  const hatTip = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.34, 12), purpleMat);
+  hatTip.position.y = 0.15;
+  tipPivot.add(hatTip);
+
+  // ---------- limbs ----------
+  const UP = new THREE.Vector3(0, 1, 0);
+  const tmpDir = new THREE.Vector3();
+  function makeLimb(sx, sy, sz, ex, ey, ez, rEnd, rStart, mat, parent) {
+    tmpDir.set(ex - sx, ey - sy, ez - sz);
+    const len = tmpDir.length();
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rEnd, rStart, len, 10), mat);
+    m.position.set((sx + ex) / 2, (sy + ey) / 2, (sz + ez) / 2);
+    m.quaternion.setFromUnitVectors(UP, tmpDir.normalize());
+    parent.add(m);
+    return m;
+  }
+
+  // left arm cradles the flask (static)
+  makeLimb(-0.16, 0.12, 0.04, -0.36, -0.11, 0.24, 0.07, 0.05, purpleMat, group);
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), skinMat);
+  handL.position.set(-0.36, -0.11, 0.24);
+  group.add(handL);
+
+  // ---------- round-bottom flask with glowing green liquid ----------
+  const flaskGroup = new THREE.Group();
+  flaskGroup.position.set(-0.38, 0.02, 0.30); // bulb rests on the left hand
+  group.add(flaskGroup);
+
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 16), glassMat);
+  bulb.renderOrder = 2;
+  flaskGroup.add(bulb);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.058, 0.20, 12), glassMat);
+  neck.position.y = 0.20;
+  neck.renderOrder = 2;
+  flaskGroup.add(neck);
+
+  const liquid = new THREE.Mesh(
+    new THREE.SphereGeometry(0.132, 16, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    liquidMat
+  );
+  flaskGroup.add(liquid);
+  const liquidTop = new THREE.Mesh(new THREE.CircleGeometry(0.132, 16), liquidMat);
+  liquidTop.rotation.x = -Math.PI / 2;
+  liquidTop.position.y = 0.004;
+  flaskGroup.add(liquidTop);
+
+  // three tiny bubbles that rise through the neck and reset
+  const bubbles = [];
+  const bubbleSpeed = [0.55, 0.4, 0.7];
+  const bubbleOff = [0.0, 0.37, 0.71];
+  const bubbleBX = [0.045, -0.04, 0.012];
+  const bubbleBZ = [0.02, 0.035, -0.042];
+  const bubbleR = [0.02, 0.015, 0.024];
+  for (let i = 0; i < 3; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(bubbleR[i], 8, 6), bubbleMat);
+    b.position.set(bubbleBX[i], 0.02, bubbleBZ[i]);
+    b.renderOrder = 1;
+    flaskGroup.add(b);
+    bubbles.push(b);
+  }
+
+  // soft additive green glow sprite around the flask
+  let glowSprite = null;
+  let glowMat = null;
+  if (typeof document !== 'undefined') {
+    const cv = document.createElement('canvas');
+    cv.width = 64;
+    cv.height = 64;
+    const ctx = cv.getContext('2d');
+    if (ctx) {
+      const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+      grad.addColorStop(0.4, 'rgba(255,255,255,0.30)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+      glowMat = new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(cv), color: 0x58ff9a,
+        transparent: true, opacity: 0.6,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      });
+      glowSprite = new THREE.Sprite(glowMat);
+      glowSprite.position.set(0, 0.02, 0);
+      glowSprite.scale.set(0.55, 0.55, 1);
+      glowSprite.renderOrder = 3;
+      flaskGroup.add(glowSprite);
+    }
+  }
+
+  // right arm stirs: upper arm fixed, forearm on an animated pivot
+  makeLimb(0.16, 0.12, 0.04, 0.15, -0.04, 0.18, 0.06, 0.052, purpleMat, group);
+  const forearmPivot = new THREE.Group();
+  forearmPivot.position.set(0.15, -0.04, 0.18); // elbow
+  group.add(forearmPivot);
+  makeLimb(0, 0, 0, -0.09, 0.14, 0.18, 0.07, 0.052, purpleMat, forearmPivot);
+  const handR = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), skinMat);
+  handR.position.set(-0.09, 0.14, 0.18);
+  forearmPivot.add(handR);
+
+  // thin stirring rod held in the right hand, angled toward the flask mouth
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.017, 0.5, 8), rodMat);
+  tmpDir.set(-0.53 + 0.09, 0.36 - 0.14, 0.12 - 0.18).normalize(); // toward mouth, pivot-local
+  rod.position.set(-0.09 + tmpDir.x * 0.18, 0.14 + tmpDir.y * 0.18, 0.18 + tmpDir.z * 0.18);
+  rod.quaternion.setFromUnitVectors(UP, tmpDir);
+  forearmPivot.add(rod);
+
+  // ---------- animation state (no per-frame allocations) ----------
+  let lastT = 0;
+  let stirPhase = 0;
+  let hemPhase = 0;
+  let stirAmp = 0.05;
+
+  return {
+    group,
+    locomotion: 'fly',
+    baseScale: 1.0,
+    orbitK: 1.45,
+    groundY: null,
+    animate(now, phase) {
+      const t = now * 0.001;
+      let dt = t - lastT;
+      lastT = t;
+      if (dt < 0 || dt > 0.1) dt = 0.016;
+      const orbiting = phase === 'orbit';
+
+      // stirring arm: small circular stir in orbit, calmer while travelling
+      const targetAmp = orbiting ? 0.15 : 0.05;
+      stirAmp += (targetAmp - stirAmp) * Math.min(1, dt * 4);
+      stirPhase += dt * (orbiting ? 5.5 : 2.2);
+      forearmPivot.rotation.x = Math.sin(stirPhase) * stirAmp;
+      forearmPivot.rotation.z = Math.cos(stirPhase) * stirAmp;
+
+      // robe hem sway, faster while travelling
+      hemPhase += dt * (orbiting ? 2.6 : 5.4);
+      hemPivot.rotation.x = Math.sin(hemPhase) * 0.12;
+      hemPivot.rotation.z = Math.cos(hemPhase * 0.83) * 0.09;
+
+      // hat tip wobble (very subtle)
+      tipPivot.rotation.x = Math.sin(t * 2.7) * 0.055;
+      tipPivot.rotation.z = Math.cos(t * 2.3) * 0.05;
+
+      // gentle head sway, glancing toward the flask
+      head.rotation.y = -0.06 + Math.sin(t * 0.8) * 0.05;
+      head.rotation.x = Math.sin(t * 1.1) * 0.03;
+
+      // liquid glow pulse
+      const pulse = Math.sin(t * 3.2);
+      liquidMat.emissiveIntensity = 1.05 + 0.4 * pulse;
+      if (glowMat !== null) {
+        glowMat.opacity = 0.55 + 0.2 * pulse;
+        const gs = 0.55 + 0.05 * pulse;
+        glowSprite.scale.set(gs, gs, 1);
+      }
+
+      // bubbles rise inside the bulb, funnel through the neck, pop above it
+      for (let i = 0; i < 3; i++) {
+        const c = (t * bubbleSpeed[i] + bubbleOff[i]) % 1;
+        const funnel = 0.15 + 0.7 * (1 - c) * (1 - c);
+        bubbles[i].position.set(bubbleBX[i] * funnel, 0.02 + c * 0.34, bubbleBZ[i] * funnel);
+      }
+    },
+  };
+}
+
+// ---- tour companion builders (one themed character per world) ----
+// The astronaut (solar system): a real EVA suit — puffy segmented white suit
+// with joint rings and red mission stripes, gold mirrored visor in a white
+// helmet with side lamps, chest control panel, life-support backpack with a
+// blinking antenna, grey gloves and boots, and the flaring jetpack.
+function buildAstronautCompanion(THREE) {
+  const white = new THREE.MeshStandardMaterial({ color: 0xf7f9ff, roughness: 0.45, emissive: 0x3a4456, emissiveIntensity: 0.55 });
+  const grey = new THREE.MeshStandardMaterial({ color: 0x9aa4b5, roughness: 0.7, emissive: 0x232b37, emissiveIntensity: 0.5 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x3a4350, roughness: 0.6, emissive: 0x151b24, emissiveIntensity: 0.5 });
+  const red = new THREE.MeshStandardMaterial({ color: 0xd8404a, roughness: 0.5, emissive: 0x5c1418, emissiveIntensity: 0.6 });
+  // Gold visor: NOT metalness 1 — with no environment map full metal renders
+  // near-black; a strong emissive is what actually reads as mirrored gold.
+  const gold = new THREE.MeshPhysicalMaterial({ color: 0xf6bb45, metalness: 0.5, roughness: 0.22, clearcoat: 1, emissive: 0xd9921f, emissiveIntensity: 1.05 });
+  const g = new THREE.Group();
+
+  // torso: puffy suit shell with segment rings + chest control panel
+  g.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.56, 0.85, 6, 14), white));
+  const beltGeo = new THREE.TorusGeometry(0.545, 0.055, 8, 20);
+  for (const y of [0.08, -0.26]) {
+    const belt = new THREE.Mesh(beltGeo, grey);
+    belt.position.y = y; belt.rotation.x = Math.PI / 2; g.add(belt);
+  }
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 0.14), grey);
+  panel.position.set(0, 0.42, 0.5); panel.rotation.x = -0.18; g.add(panel);
+  [0xff5964, 0x7fd8ff, 0xffe28a].forEach((c, i) => {
+    const k = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.05),
+      new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.9 }));
+    k.position.set(-0.14 + i * 0.14, 0.44, 0.585); k.rotation.x = -0.18; g.add(k);
+  });
+
+  // helmet: white shell, neck collar ring, big gold mirrored visor, side lamps
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.56, 22, 18), white);
+  helmet.position.y = 1.14; g.add(helmet);
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.09, 10, 22), grey);
+  collar.position.y = 0.72; collar.rotation.x = Math.PI / 2; g.add(collar);
+  // Pushed forward so it protrudes past the 0.56 helmet shell — tucked at
+  // z 0.17 the whole visor hid INSIDE the helmet sphere.
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.46, 22, 16), gold);
+  visor.position.set(0, 1.16, 0.3); visor.scale.set(0.88, 0.76, 0.7); g.add(visor);
+  for (const s of [-1, 1]) {
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.16, 0.22), dark);
+    lamp.position.set(s * 0.52, 1.24, 0.08); g.add(lamp);
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xfff4c9, emissive: 0xfff4c9, emissiveIntensity: 1.4 }));
+    lens.position.set(s * 0.52, 1.24, 0.2); g.add(lens);
+  }
+
+  // life-support backpack + blinking antenna
+  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.05, 0.42), white);
+  pack.position.set(0, 0.3, -0.6); g.add(pack);
+  const packFace = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.8, 0.1), grey);
+  packFace.position.set(0, 0.32, -0.84); g.add(packFace);
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 6), grey);
+  antenna.position.set(0.32, 1.1, -0.6); g.add(antenna);
+  const antTipM = new THREE.MeshStandardMaterial({ color: 0xff5964, emissive: 0xff5964, emissiveIntensity: 1.2 });
+  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), antTipM);
+  antTip.position.set(0.32, 1.42, -0.6); g.add(antTip);
+
+  // limbs: shoulder/hip-pivoted groups, segmented with joint rings, red
+  // stripes, grey gloves and boots. Pivots let the right arm wave in orbit.
+  const mkArm = (side) => {
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.58, 0.5, 0); arm.rotation.z = side * 0.62;
+    arm.add(new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), grey));
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.145, 0.3, 4, 10), white);
+    upper.position.y = -0.28; arm.add(upper);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.09, 12), red);
+    stripe.position.y = -0.2; arm.add(stripe);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), grey);
+    elbow.position.y = -0.52; arm.add(elbow);
+    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.26, 4, 10), white);
+    fore.position.y = -0.74; arm.add(fore);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.08, 12), grey);
+    cuff.position.y = -0.9; arm.add(cuff);
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), grey);
+    glove.position.y = -1.02; arm.add(glove);
+    g.add(arm); return arm;
+  };
+  const armL = mkArm(-1), armR = mkArm(1);
+  const mkLeg = (side) => {
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.26, -0.62, 0); leg.rotation.z = side * 0.1;
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.3, 4, 10), white);
+    thigh.position.y = -0.2; leg.add(thigh);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.185, 0.09, 12), red);
+    stripe.position.y = -0.12; leg.add(stripe);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), grey);
+    knee.position.y = -0.46; leg.add(knee);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), white);
+    shin.position.y = -0.7; leg.add(shin);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.36), grey);
+    boot.position.set(0, -0.92, 0.06); leg.add(boot);
+    g.add(leg); return leg;
+  };
+  mkLeg(-1); mkLeg(1);
+
+  const jetGeo = new THREE.ConeGeometry(0.16, 0.8, 10);
+  const mkJet = (x) => {
+    const j = new THREE.Mesh(jetGeo, new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    j.position.set(x, -0.55, -0.6); j.rotation.x = Math.PI; g.add(j); return j;
+  };
+  const jets = [mkJet(-0.2), mkJet(0.2)];
+  return {
+    group: g, locomotion: 'fly', baseScale: 1.6, orbitK: 1.7, groundY: null,
+    animate(now, phase) {
+      const t = now * 0.001;
+      antTipM.emissiveIntensity = 0.6 + 0.8 * (Math.sin(t * 4) > 0 ? 1 : 0);   // beacon blink
+      if (phase === 'travel') {
+        for (const j of jets) { j.scale.set(1, 1.4 + Math.random() * 0.5, 1); j.material.opacity = 0.85; }
+        armR.rotation.z = 0.62; armR.rotation.x = 0;   // arms trail while flying
+      } else {
+        for (const j of jets) { j.scale.set(1, 0.7 + Math.sin(now * 0.004) * 0.2, 1); j.material.opacity = 0.4; }
+        armR.rotation.z = 2.45 + Math.sin(t * 6) * 0.28;   // friendly wave at the viewer
+      }
+      armL.rotation.z = -0.62 + Math.sin(t * 1.3) * 0.06;
+    },
+  };
+}
+
+// Registry: which companion belongs to which world. Missing builders (not yet
+// spliced) are simply skipped — the tour runs fine without a companion.
+const TOUR_COMPANION_BUILDERS = {
+  SOLAR_SYSTEM: (T) => buildAstronautCompanion(T),
+  FLOWER: (T) => (typeof buildFairyCompanion === 'function' ? buildFairyCompanion(T) : null),
+  PYRAMID: (T) => (typeof buildPharaohCompanion === 'function' ? buildPharaohCompanion(T) : null),
+  ATOM: (T) => (typeof buildScientistCompanion === 'function' ? buildScientistCompanion(T) : null),
+  MOLECULES: (T) => (typeof buildAlchemistCompanion === 'function' ? buildAlchemistCompanion(T) : null),
+};
+
 class Explorer {
   constructor() {
     this.mode = 'SOLAR_SYSTEM';
@@ -1259,6 +2283,7 @@ class Explorer {
     this.currentTargetName = '';
     this.currentTargetFacts = '';           // description fed to the guide/voice for "what is this?"
     this._anatomyTargetName = '';           // last organ synced from the anatomy iframe
+    this._anatomySpeech = null;             // token for the lesson Dr. Somatic is currently voicing
     this.realtime = new RealtimeVoice({
       sessionUrl: '/session',
       onStatus: s => { const b = el('voice-btn'); if (b) { b.classList.toggle('active', s === 'connected'); b.textContent = s === 'connected' ? '🎤 Voice On' : (s === 'connecting' ? 'Connecting…' : '🎤 Voice'); } },
@@ -1275,7 +2300,10 @@ class Explorer {
     // Let the voice agent drive the app: switch scenes, open objects, go back.
     this.realtime.tools = EXPLORER_VOICE_TOOLS;
     this.realtime.onToolCall = (name, args) => this.handleVoiceTool(name, args);
-    this.realtime.onResponseDone = (status) => this._narrationDone(status);
+    // response.done fires when the model finishes GENERATING — seconds before
+    // the ~20s+ of speech finishes PLAYING. output_audio_buffer.stopped is the
+    // true "done talking" signal; tour pacing keys off that, not response.done.
+    this.realtime.onAudioDone = () => this._audioDone();
   }
 
   // Execute a voice-agent tool call and return a short result string the model
@@ -1394,6 +2422,9 @@ class Explorer {
   _resumeNoseAfterShow() {
     try { this.music.stop(); } catch (e) {}
     try { this.realtime.setNarrationLock(false); } catch (e) {}
+    // Cut off any speech that's still playing (e.g. the user manually stopped
+    // a show mid-sentence). A no-op if nothing is playing.
+    try { this.realtime.silence(); } catch (e) {}
     if (!this._noseSuspendedByShow) return;
     this._noseSuspendedByShow = false;
     if (this._noseWasEnabled) {
@@ -1453,6 +2484,7 @@ class Explorer {
     const apBtn = el('autoplay-btn');
     if (apBtn) { apBtn.classList.add('active'); apBtn.textContent = '⏹ Stop'; }
     this._suspendNoseForShow();
+    this._spawnCompanion();   // themed tour companion for this world (if any)
     this._tourStep();
     return 'Tour started: ' + script.length + ' stops. Narrate each stop when its line arrives.';
   }
@@ -1464,8 +2496,13 @@ class Explorer {
     const stop = t.script[t.i++];
     const it = this.interactables.find(i => i.name === stop.target);
     if (it) {
-      const size = (it.data && it.data.size) || 10;
-      this.flyTo(it.mesh, Math.max(14, size * 4));
+      // Measure the target when it declares no size: the default of 10 framed
+      // the huge pyramid like a keyhole shot and left the walking pharaoh
+      // behind the camera, while tiny molecule atoms got distant wide shots.
+      const size = this._targetSizeOf(it.mesh, it.data && it.data.size);
+      this.flyTo(it.mesh, Math.max(16, size * 4));
+      // The companion travels to the same target the camera + narration are on.
+      if (this._comp) this._companionGoTo(it.mesh, size);
       this.setTarget(it.name, (it.data && it.data.facts) || (typeof PLANET_LAYER_FACTS !== 'undefined' && PLANET_LAYER_FACTS[it.name]) || '');
       // The pyramid tour looks inside: X-ray the shell at the first stop.
       if (this.mode === 'PYRAMID' && stop.target === 'The Great Pyramid') {
@@ -1474,32 +2511,51 @@ class Explorer {
       }
     }
     this.addMessage('assistant', stop.line);
-    if (this.realtime.connected) this.realtime.say(stop.line);   // verbatim narration cue
     // Solar show: mid-narration the body rips itself open — same effect as the
     // two-hand gesture. It closes again in _finishStopAndAdvance, right before
     // the flight to the next stop.
     if (this.mode === 'SOLAR_SYSTEM' && it) this._tourAutoOpen(t, it);
     t._advanced = false;
     if (this.realtime.connected) {
-      // Pace on the VOICE, not a clock: fixed dwells cut every stop mid-sentence
-      // (the lines run ~20s+) and the narration drifted a planet behind the
-      // camera. Advance on response.done; a generous safety timer backs it up.
-      t.waitingNarration = true;
-      t.timer = setTimeout(() => { t.waitingNarration = false; this._finishStopAndAdvance(t); }, 32000);
+      this.realtime.say(stop.line);   // verbatim narration cue
+      // Pace on the audio actually finishing PLAYING (_audioDone, wired to the
+      // WebRTC output_audio_buffer.stopped event) — not on a fixed clock, and
+      // not on response.done (that fires when generation ends, seconds before
+      // the ~20-26s of speech is done; racing on it is what kept cutting every
+      // stop off mid-sentence and left the voice a planet behind the camera).
+      // A word-count duration estimate is the fallback if the stopped event
+      // never arrives, so a stall can never freeze the tour.
+      t.waitingAudio = true;
+      const words = stop.line.trim().split(/\s+/).filter(Boolean).length;
+      const estMs = Math.min(34000, Math.max(7000, (words / 2.2) * 1000 + 2800));
+      t.timer = setTimeout(() => { if (t.waitingAudio) { t.waitingAudio = false; this._finishStopAndAdvance(t); } }, estMs);
     } else {
       t.timer = setTimeout(() => this._finishStopAndAdvance(t), 9000);
     }
   }
 
-  // The narration for the current stop finished speaking -> breathe, close the
-  // planet if open, then fly on.
-  _narrationDone(status) {
+  // The audio for the current stop actually finished PLAYING -> breathe, close
+  // the planet if open, then fly on. Wired to output_audio_buffer.stopped.
+  _audioDone() {
+    // Anatomy lessons also pace their visual presentation from real audio
+    // completion. Token matching in the iframe makes stale acknowledgements
+    // harmless; the short guard ignores the `stopped` event produced when
+    // say() cancels an older response immediately before starting this one.
+    const anatomySpeech = this._anatomySpeech;
+    if (anatomySpeech && Date.now() - anatomySpeech.startedAt > 1200) {
+      this._anatomySpeech = null;
+      try {
+        const w = el('anatomy-frame').contentWindow;
+        if (typeof w.__ANATOMY_SPEECH_DONE__ === 'function') {
+          w.__ANATOMY_SPEECH_DONE__(anatomySpeech.token);
+        }
+      } catch (e) {}
+    }
     const t = this._tour;
-    if (!t || !t.waitingNarration) return;
-    if (status && status !== 'completed') return;   // a cancelled cue is not "finished"
-    t.waitingNarration = false;
+    if (!t || !t.waitingAudio) return;
+    t.waitingAudio = false;
     clearTimeout(t.timer);
-    t.timer = setTimeout(() => this._finishStopAndAdvance(t), 1400);
+    t.timer = setTimeout(() => this._finishStopAndAdvance(t), 900);
   }
 
   _finishStopAndAdvance(t) {
@@ -1529,6 +2585,208 @@ class Explorer {
     }, 2200));
   }
 
+  // ---- tour companions: a themed character accompanies every narrated show ----
+  // One per world (astronaut, fairy, pharaoh, scientist, alchemist), all built
+  // procedurally against one contract: the ENGINE owns position/rotation/scale
+  // (arc flights, orbiting, ground walking), the character animates only its own
+  // parts (wings, legs, clipboard...). Sync with the narration is inherited:
+  // _tourStep sends the companion to the same target the camera + voice are on.
+  _spawnCompanion() {
+    if (this._comp) return;
+    const build = (typeof TOUR_COMPANION_BUILDERS !== 'undefined') && TOUR_COMPANION_BUILDERS[this.mode];
+    if (!build) return;
+    let def = null;
+    try { def = build(THREE); } catch (e) { console.warn('companion build failed', e); return; }
+    if (!def || !def.group) return;
+    def.group.scale.setScalar(def.baseScale || 1);
+    if (def.locomotion === 'walk') def.group.position.set(26, def.groundY ?? 0, 26);
+    else def.group.position.set(0, 30, 10);
+    this.scene.add(def.group);
+    this._comp = {
+      def, group: def.group, mode: 'idle', t0: performance.now(), travelMs: 2000,
+      from: new THREE.Vector3(), ctrl: new THREE.Vector3(), to: new THREE.Vector3(),
+      orbitCenter: new THREE.Vector3(), orbitR: 10, orbitA: 0, planet: null, size: 8,
+      scaleTo: def.baseScale || 1,
+      tmp: new THREE.Vector3(), tmp2: new THREE.Vector3(), wtmp: new THREE.Vector3(),
+      box: new THREE.Box3(),
+    };
+  }
+
+  // Effective size of a tour/companion target: the declared data.size, or the
+  // measured bounding half-extent when none is declared (chambers, molecule
+  // atoms, petals all register without one).
+  _targetSizeOf(mesh, hint) {
+    if (hint && hint !== 10) return hint;
+    try {
+      const box = new THREE.Box3().setFromObject(mesh);
+      const s = new THREE.Vector3(); box.getSize(s);
+      return (Math.max(s.x, s.y, s.z) / 2) || hint || 6;
+    } catch (e) { return hint || 6; }
+  }
+
+  // Target position in SCENE-LOCAL space: planets are direct scene children,
+  // but pyramid chambers live under the rotated pyramid — world -> scene-local
+  // handles both (and the slow scene rotation the companion also inherits).
+  _companionCenterOf(mesh, out) {
+    mesh.getWorldPosition(out);
+    return this.scene.worldToLocal(out);
+  }
+
+  _companionGoTo(mesh, sizeHint) {
+    const a = this._comp; if (!a) return;
+    const d = a.def;
+    // Size: explicit hint, or measured half-extent (molecule atoms and petals
+    // register no size, and the default of 10 dwarfs or hides the companion).
+    let size = sizeHint;
+    if (!size || size === 10) {
+      try {
+        a.box.setFromObject(mesh); a.box.getSize(a.tmp);
+        size = (Math.max(a.tmp.x, a.tmp.y, a.tmp.z) / 2) || sizeHint || 6;
+      } catch (e) { size = sizeHint || 6; }
+    }
+    a.planet = mesh; a.size = size;
+    a.orbitR = size * (d.orbitK || 1.5) + 2.5;
+    // Ambient walker: the close ring beside the pyramid base is outside the
+    // default view's FOV — patrol the far field instead (measured in-frame).
+    if (!this._tour && d.locomotion === 'walk') a.orbitR = Math.max(a.orbitR, size * 2.2);
+    a.scaleTo = (d.baseScale || 1) * THREE.MathUtils.clamp(size / 6, 0.7, 1.25);
+    // Ambient residents must read from the far world-view camera (the tour
+    // flies in close; the resident view does not) — outside a show, go bigger.
+    if (!this._tour) a.scaleTo *= (d.locomotion === 'walk' ? 2.6 : 2.1);
+    this._companionCenterOf(mesh, a.orbitCenter);
+    a.from.copy(a.group.position);
+    a.tmp.copy(a.from).sub(a.orbitCenter); a.tmp.y = 0;
+    if (a.tmp.lengthSq() < 1) a.tmp.set(1, 0, 0);
+    a.tmp.normalize();
+    a.to.copy(a.orbitCenter).addScaledVector(a.tmp, a.orbitR);
+    if (d.locomotion === 'walk') {
+      const gy = d.groundY ?? 0;
+      a.from.y = gy; a.to.y = gy;
+      a.ctrl.copy(a.from).add(a.to).multiplyScalar(0.5); a.ctrl.y = gy;     // flat ground path
+      a.travelMs = Math.min(6500, Math.max(2200, a.from.distanceTo(a.to) * 70));
+    } else {
+      a.to.y = a.orbitCenter.y + size * 0.5 + 1.5;
+      a.ctrl.copy(a.from).add(a.to).multiplyScalar(0.5);                    // arced swoop
+      a.ctrl.y += Math.max(8, a.from.distanceTo(a.to) * 0.25);
+      a.travelMs = Math.min(3200, Math.max(1500, a.from.distanceTo(a.to) * 28));
+    }
+    a.orbitA = Math.atan2(a.to.z - a.orbitCenter.z, a.to.x - a.orbitCenter.x);
+    a.mode = 'travel'; a.t0 = performance.now();
+  }
+
+  _updateCompanion() {
+    const a = this._comp; if (!a) return;
+    const d = a.def, now = performance.now();
+    // Walkers keep their walk cycle while circling their target; flyers idle.
+    const phase = (a.mode === 'travel' || (d.locomotion === 'walk' && a.mode === 'orbit')) ? 'travel' : 'orbit';
+    try { if (d.animate) d.animate(now, phase); } catch (e) {}
+    if (a.mode === 'travel') {
+      const p = Math.min(1, (now - a.t0) / a.travelMs);
+      const e = p * p * (3 - 2 * p), inv = 1 - e;
+      a.tmp.set(0, 0, 0)
+        .addScaledVector(a.from, inv * inv)
+        .addScaledVector(a.ctrl, 2 * inv * e)
+        .addScaledVector(a.to, e * e);
+      a.tmp2.copy(a.tmp).sub(a.group.position);
+      a.group.position.copy(a.tmp);
+      if (a.tmp2.lengthSq() > 1e-6) {
+        if (d.locomotion === 'walk') a.tmp2.y = 0;      // upright, yaw only
+        a.group.lookAt(a.wtmp.copy(a.tmp).add(a.tmp2));
+        if (d.locomotion !== 'walk') a.group.rotateX(1.15);   // superman lean
+      }
+      a.group.scale.setScalar(THREE.MathUtils.lerp(a.group.scale.x, a.scaleTo, 0.06));
+      if (p >= 1) { a.mode = 'orbit'; a.t0 = now; }
+    } else if (a.mode === 'orbit' && a.planet) {
+      // Ambient wandering between sights — never during a show (the tour drives).
+      if (!this._tour && a.nextHop && d.locomotion !== 'walk' && now > a.nextHop) { this._companionHop(); return; }
+      this._companionCenterOf(a.planet, a.orbitCenter);
+      if (d.locomotion === 'walk') {
+        // Walkers pace on the CAMERA side of their target: blindly circling the
+        // pyramid's huge base kept the pharaoh out of frame most of each lap.
+        a.wtmp.copy(this.camera.position);
+        this.scene.worldToLocal(a.wtmp);
+        const camA = Math.atan2(a.wtmp.z - a.orbitCenter.z, a.wtmp.x - a.orbitCenter.x);
+        // Ambient: patrol the far field at camA-2.6 — measured as the open
+        // sand the default view actually shows (dead-on camera-side ground
+        // sits below the frame, the near side ring outside the horizontal
+        // FOV). The tour camera flies low and close, where dead-on is right.
+        const aimA = camA + (this._tour ? 0 : -2.6);
+        let dA = aimA - a.orbitA;
+        dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+        a.orbitA += THREE.MathUtils.clamp(dA, -0.006, 0.006) + Math.sin(now * 0.0005) * 0.002;
+      } else {
+        a.orbitA += 0.012;
+      }
+      const gy = d.groundY ?? 0;
+      // Ambient flyers ride a bit higher — above the bloom/structure rather
+      // than level with it, where the crown hides them half the orbit.
+      const y = d.locomotion === 'walk'
+        ? gy
+        : a.orbitCenter.y + a.size * 0.5 + 1.5 + (this._tour ? 0 : a.size * 0.35) + Math.sin(now * 0.0016) * 0.8;
+      a.group.position.set(
+        a.orbitCenter.x + Math.cos(a.orbitA) * a.orbitR, y,
+        a.orbitCenter.z + Math.sin(a.orbitA) * a.orbitR
+      );
+      a.tmp.set(
+        a.orbitCenter.x + Math.cos(a.orbitA + 0.12) * a.orbitR, a.group.position.y,
+        a.orbitCenter.z + Math.sin(a.orbitA + 0.12) * a.orbitR
+      );
+      a.group.lookAt(a.tmp);
+      if (d.locomotion !== 'walk') a.group.rotation.z += Math.sin(now * 0.001) * 0.04;
+    }
+  }
+
+  _despawnCompanion() {
+    const a = this._comp; if (!a) return;
+    this._comp = null;
+    a.group.traverse(o => this.disposeObject(o));
+    this.scene.remove(a.group);
+  }
+
+  // ---- ambient residency: the fairy/pharaoh/scientist/alchemist LIVE in
+  // their worlds. They appear the moment the world loads, wander its sights,
+  // and a running tour simply redirects them. (The astronaut stays show-only:
+  // it was asked for as part of the Cosmos presentation.)
+  _spawnAmbientCompanion() {
+    if (this.mode === 'SOLAR_SYSTEM') return;
+    if (!(typeof TOUR_COMPANION_BUILDERS !== 'undefined' && TOUR_COMPANION_BUILDERS[this.mode])) return;
+    this._spawnCompanion();
+    this._companionAmbientHome();
+  }
+
+  // Send the resident to its world's hero sight (the first tour stop) and
+  // schedule the idle wandering.
+  _companionAmbientHome() {
+    const a = this._comp; if (!a) return;
+    const script = TOUR_SCRIPTS[this.mode] || [];
+    let it = script.length ? this.interactables.find(i => i.name === script[0].target) : null;
+    if (!it) it = this.interactables[0];
+    if (!it) return;
+    this._companionGoTo(it.mesh, this._targetSizeOf(it.mesh, it.data && it.data.size));
+    a.nextHop = performance.now() + 9000 + Math.random() * 8000;
+  }
+
+  // Idle wandering: outside a show, flyers hop between the world's tour
+  // sights (the fairy flits petal to petal, the alchemist atom to atom). The
+  // pharaoh — a walker — keeps pacing at the pyramid instead of trekking off.
+  _companionHop() {
+    const a = this._comp; if (!a) return;
+    a.nextHop = performance.now() + 11000 + Math.random() * 9000;
+    // ALL matching sights, not find-first: the flower registers 23 petals all
+    // named "Petal" — the fairy should flit among every one of them.
+    const names = new Set((TOUR_SCRIPTS[this.mode] || []).map(s => s.target));
+    const sights = [];
+    for (const it of this.interactables) {
+      if (!names.has(it.name) || it.mesh === a.planet) continue;
+      const sz = this._targetSizeOf(it.mesh, it.data && it.data.size);
+      if (sz > 45) continue;   // giant rings (atom shells) would orbit off-screen
+      sights.push({ it, sz });
+    }
+    if (!sights.length) return;
+    const pick = sights[Math.floor(Math.random() * sights.length)];
+    this._companionGoTo(pick.it.mesh, pick.sz);
+  }
+
   _tweenOpen(t, target, ms, done) {
     const start = this.openAmount, t0 = performance.now();
     const iv = setInterval(() => {
@@ -1552,6 +2810,11 @@ class Explorer {
     if (this._tour && this._tour.timer) clearTimeout(this._tour.timer);
     if (this._tour && this._tour.autoTimers) this._tour.autoTimers.forEach(x => { clearTimeout(x); clearInterval(x); });
     this._tour = null;
+    // The fairy/pharaoh/scientist/alchemist are ambient RESIDENTS of their
+    // worlds — after the show they go back to wandering instead of vanishing.
+    // Only the astronaut is show-only (asked for as part of the Cosmos show).
+    if (this._comp && this.mode !== 'SOLAR_SYSTEM' && !this.anatomyActive) this._companionAmbientHome();
+    else this._despawnCompanion();
     if (this.grabState !== 'idle') this.releaseOpenPlanet();   // planet left open mid-show
     if (this.mode === 'PYRAMID' && !this.isExamining) this.restorePyramid();
     if (finished) this.addMessage('assistant', '(Tour complete — point at anything and ask me more.)');
@@ -1559,6 +2822,11 @@ class Explorer {
   }
 
   init() {
+    // Browsers may restore the last selected <option> during reload. The app
+    // always boots into the solar system, so make both visible labels agree
+    // before the 3D scene finishes initializing.
+    el('mode-select').value = this.mode;
+    el('status').textContent = 'SOLAR SYSTEM';
     this.container = el('scene-container');
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x000000);
     this.camera = new THREE.PerspectiveCamera(55, this.container.clientWidth / this.container.clientHeight, 0.1, 3000);
@@ -1669,6 +2937,7 @@ class Explorer {
 
   loadMode(mode) {
     this.stopTour();                // a running tour must not narrate a dead scene
+    this._despawnCompanion();       // the old world's resident leaves with its scene
     this.clearScene();
     this.resetView();
     this._revealedPyramid = null;   // its mesh was just disposed; drop the stale handle
@@ -1682,6 +2951,7 @@ class Explorer {
     // The anatomy teaser's 3D text sprites overlap the HUD title and the HTML
     // launch button; the DOM overlay already labels everything, so hide them.
     if (anatomyMode) this.scene.traverse(o => { if (o.isSprite) o.visible = false; });
+    this._spawnAmbientCompanion();  // fairy/pharaoh/scientist/alchemist live here
     this.updateCamera();
   }
 
@@ -1718,6 +2988,9 @@ class Explorer {
     // heavy anatomy app has the GPU to itself (we were paying for two WebGL apps).
     if (this.anatomyActive) return;
     for (const fn of this.frameCbs) { try { fn(); } catch (e) {} }
+    // Guarded: a companion hiccup must NEVER halt the render loop — an
+    // exception here would freeze the whole presentation mid-show.
+    if (this._comp) { try { this._updateCompanion(); } catch (e) { console.warn('companion update failed', e); } }
     this.updateOpenPlanet();
     this.renderer.render(this.scene, this.camera);
 
@@ -2134,7 +3407,10 @@ class Explorer {
         const s = w.__ANATOMY_SPEECH__;
         if (s && s.ts !== this._lastSpeechTs) {
           this._lastSpeechTs = s.ts;
-          if (this.realtime.connected) this.realtime.say(String(s.text || '').slice(0, 900));   // verbatim narration
+          if (this.realtime.connected) {
+            this._anatomySpeech = { token: s.token || String(s.ts), startedAt: Date.now() };
+            this.realtime.say(String(s.text || '').slice(0, 900));   // verbatim narration
+          }
           else this.addMessage('assistant', (s.title ? s.title + ' — ' : '') + String(s.text || '').slice(0, 400));
         }
       } catch (e) {}
@@ -2143,7 +3419,7 @@ class Explorer {
   hideAnatomy() {
     el('anatomy-frame').style.display = 'none';
     el('anatomy-back').classList.remove('show');
-    this.anatomyActive = false; this._anatomyTargetName = '';
+    this.anatomyActive = false; this._anatomyTargetName = ''; this._anatomySpeech = null;
     if (this._touchPoll) { clearInterval(this._touchPoll); this._touchPoll = null; }
     this.realtime.setInstructions(explorerVoiceInstructions(this.mode));   // restore world persona
     const hud = document.querySelector('.hud-overlay'); if (hud) hud.style.display = '';
@@ -2275,9 +3551,14 @@ class Explorer {
       this._autoReleasedForMotion = true;
       this.stopHandTracking();                       // stops our tracks entirely
       el('hand-btn').textContent = 'YIELDED TO MOTION CAPTURE';
-      const ns = el('nose-status'); if (ns) ns.textContent = 'Camera handed to the body mirror';
-      el('cursor').style.display = 'none';
-      this._watchMotionEnd();                      // nose/hands come back on their own
+      // The camera is the mirror's now — but the NOSE keeps working. The mirror
+      // is already tracking the face; we borrow its nose + eye landmarks and
+      // run our own nose pointer off them, so the user can still point at organs
+      // (and answer the quiz) with no second camera. Recenter first so the
+      // pointer calibrates to the borrowed feed.
+      this.nosePointer.reset();
+      this._runBorrowedNoseLoop();
+      this._watchMotionEnd();                      // hands come back when motion ends
       return;
     }
     // Hand inference at ~30fps (every 2nd rAF): indistinguishable for control but
@@ -2400,6 +3681,61 @@ class Explorer {
       };
       w.__CAM_WRAPPED__ = true;
     } catch (e) {}
+  }
+
+  // While the anatomy's Motion Capture owns the camera, keep the NOSE POINTER
+  // alive by borrowing the mirror's own head landmarks (nose + eye corners it
+  // already tracks) instead of opening a second camera stream. Feeds them
+  // through the exact same NosePointer + forwardNoseToAnatomy pipeline the
+  // stand-alone nose uses, so pointing/dwelling still selects organs and
+  // answers the quiz. Stops on its own when motion capture ends.
+  _runBorrowedNoseLoop() {
+    if (this._borrowedNoseRAF) return;
+    const step = () => {
+      if (!this.anatomyActive || !this.anatomyMotionRunning()) {
+        this._borrowedNoseRAF = null;
+        el('cursor').style.display = 'none';
+        return;
+      }
+      if (this.nosePointerEnabled) {
+        const lm = this._readAnatomyHeadLandmarks();
+        const ns = el('nose-status');
+        if (lm) {
+          const out = this.nosePointer.update(lm, performance.now());
+          if (ns) ns.textContent = out.status;
+          if (out.cursor) {
+            const u = out.cursor.x / window.innerWidth, v = out.cursor.y / window.innerHeight;
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            const cur = el('cursor'); cur.style.display = 'block';
+            cur.style.left = (u * rect.width) + 'px'; cur.style.top = (v * rect.height) + 'px';
+            this.forwardNoseToAnatomy(u, v, out.dwell);
+          } else {
+            el('cursor').style.display = 'none';
+          }
+        } else if (ns) {
+          ns.textContent = 'Camera handed to the body mirror';
+        }
+      }
+      this._borrowedNoseRAF = requestAnimationFrame(step);
+    };
+    this._borrowedNoseRAF = requestAnimationFrame(step);
+  }
+
+  // Read the head landmarks the anatomy iframe publishes each pose frame and
+  // shape them into the sparse face-landmark array NosePointer.update expects
+  // (it only reads index 1 = nose tip, 33 / 263 = the two eye-outer corners).
+  _readAnatomyHeadLandmarks() {
+    try {
+      const w = el('anatomy-frame').contentWindow;
+      const h = w && w.__POSE_HEAD_LM__;
+      if (!h || !h.nose || !h.leftEyeOuter || !h.rightEyeOuter) return null;
+      if (Date.now() - h.ts > 500) return null;      // stale: the mirror lost the face
+      const arr = new Array(264).fill(null);
+      arr[1] = h.nose;
+      arr[33] = h.leftEyeOuter;
+      arr[263] = h.rightEyeOuter;
+      return arr;
+    } catch (e) { return null; }
   }
 
   // Resume our camera once the anatomy's Motion Capture truly ends. Waits until
@@ -2683,27 +4019,51 @@ window.addEventListener('keydown', e => {
 });
 // ---- onboarding walkthrough: an arrowed tour of every control ----
 const ONBOARD_STEPS = [
-  { title: 'Welcome to Universal Life Explorer', text: 'You explore this universe with your face, your hands, and your voice. Here is the 60-second guide. (Replay it anytime with the ❔ Guide button.)' },
-  { sel: '#hand-btn', title: 'Turn on your camera', text: 'Click ACTIVATE SENSORS first. Your webcam powers everything — hand gestures and the nose pointer. Nothing is uploaded: tracking runs on your device.' },
-  { sel: '#nose-btn', title: 'Your nose is the cursor', text: 'Just look at a planet or an organ. A ring appears — hold your gaze about 5 seconds and it is selected, and the guide starts telling you about it.' },
-  { sel: '.legend', title: 'Your hands are the controls', text: '☝️ and ✌️ orbit, 👍 and 👎 tilt, ✊ zooms in, ✋ zooms out. In the Solar System, reach with BOTH hands toward a planet and pull apart to rip it open.' },
-  { sel: '#voice-btn', title: 'Talk to the guide', text: 'Turn on Voice and just ask: "What is this?", "Take me to the flower", "Show me inside the pyramid", "Give me a tour". The guide can drive the app for you.' },
-  { sel: '#autoplay-btn', title: 'Sit back with Autoplay', text: 'One click runs a narrated show of the whole scene. In Human Anatomy, the avatar presents its own organs — pointing at them and pulling them out one by one.' },
-  { sel: '#mode-select', title: 'Six worlds to explore', text: 'Switch between the Solar System, Molecules, the Atom, a Pyramid, a Flower — and Human Anatomy, where the body mirrors YOU: touch your own chest and hear about your heart.' },
-  { title: 'That is it — point, grab, ask', text: 'Start with ACTIVATE SENSORS, then look at something. Have fun!' },
+  { title: 'Welcome to Universal Life Explorer', text: 'This quick guide covers the camera, nose selection, hand gestures, Voice, Autoplay, and the six worlds. Replay it anytime with the ❔ Guide button.' },
+  { sel: '#hand-btn', title: 'Activate camera tracking', text: 'Click ACTIVATE SENSORS and allow camera access. One hand controls the scene, while head movement drives the nose pointer. Camera frames are processed in this browser for tracking; Voice and typed questions use the online guide only when you choose them.' },
+  { sel: '#nose-btn', title: 'Aim with your nose', text: 'Keep your face in view and move your head to aim the purple ring at an object. Hold steady for 5 seconds to open it. If Voice is on, the guide also describes the selection. Use Recenter if the pointer drifts.' },
+  { sel: '.legend', title: 'Control the scene with one hand', text: 'Show ONE hand: ☝️ orbit left, ✌️ orbit right, 👍 orbit up, 👎 orbit down, ✊ zoom in, and ✋ zoom out. The Speed slider changes the response. In the Solar System, show TWO hands over a planet and pull them apart to open it.' },
+  { sel: '#voice-btn', title: 'Talk to the guide', text: 'Turn on Voice and wait for “Voice On.” Try “What is this?”, “Take me to the flower,” “Show me inside the pyramid,” or “Give me a tour.” The guide can change worlds, open views, and start or stop a tour.' },
+  { sel: '#autoplay-btn', title: 'Run or stop Autoplay', text: 'Click Autoplay to start the current world’s guided show; the button changes to Stop. Click Stop or press Escape to end it. In Human Anatomy, the avatar points to and presents its organs one by one.' },
+  { sel: '#mode-select', title: 'Choose one of six worlds', text: 'Use this menu for the Solar System, Molecules, the Atom, Pyramids, Botany, or Human Anatomy. For Human Anatomy, choose it here and then click “Launch Full Anatomy Explorer.”' },
+  { title: 'Ready to explore', text: 'Activate Sensors, keep your face in view, and aim at an object for 5 seconds. Use one-hand gestures to move the view, two hands to open a planet, or Voice to ask the guide.' },
 ];
 // Second tour: shown the first time the Human Anatomy module opens. Its
 // spotlight can target elements INSIDE the same-origin iframe (rect + offset).
 const ANATOMY_ONBOARD_STEPS = [
-  { title: "Welcome to the Human Anatomy module", text: "This is a full app of its own: a life-size body with 25+ organs — and it can mirror YOU. Its controls live in the LEFT panel. Quick tour:" },
-  { frame: "anatomy", sel: "#ctrl-motion", title: "Motion Capture — a second camera permission", text: "IMPORTANT: this module uses its own camera. Click Motion Capture and allow the camera again if the browser asks — the explorer hands its camera over automatically. Then the body mirrors your movements live." },
-  { frame: "anatomy", sel: "#ctrl-learn", title: "Learn Mode — touch yourself, literally", text: "With Motion Capture on, rest your hand on your OWN chest: the avatar's hand lands on its heart and the guide explains it. Close your fist to pull the organ out; bring your hand back to return it." },
-  { frame: "anatomy", sel: "#search-input", title: "Browse every organ", text: "Search or pick organs by system here — or simply look at one with your nose and hold about 5 seconds to open it." },
-  { frame: "anatomy", sel: "#ctrl-quiz", title: "Quiz yourself", text: "Quiz asks you to grab the right organ on your own body. Motion Capture must be on for it." },
-  { title: "And remember ▶ Autoplay", text: "The Autoplay button in the right bar starts the body show: the avatar presents its own organs one by one. Click ⏹ Stop or press Escape to end it. 'Back to Universe' returns to the other worlds." },
+  { title: "Welcome to Human Anatomy", text: "Explore a life-size body with 25+ organs and live motion mirroring. The left panel is open for this guide; after the guide it collapses, and you can reopen it by moving the pointer to the left edge." },
+  { frame: "anatomy", sel: "#ctrl-motion", title: "Start Motion Capture", text: "Click Motion Capture and allow camera access. The main explorer releases its camera first, but the browser may ask again for this module. Stand far enough back to keep your shoulders, hips, and hands visible; the avatar then mirrors you live." },
+  { frame: "anatomy", sel: "#ctrl-learn", title: "Learn with an open hand or fist", text: "Leave Learn active. Rest an OPEN hand on a location on your own body for about 1 second: the avatar reaches there and the guide explains it. Or close a fist there and hold for about half a second to pull that organ into a presentation." },
+  { frame: "anatomy", sel: "#ctrl-learn", title: "Finish, return, or switch an organ", text: "After a fist grab, you may lower your arms; the presentation continues and the organ returns when narration finishes. To return it early, open your hand, then hold a second fist on the same body spot or with your arm extended. A fist on a different spot switches organs." },
+  { frame: "anatomy", sel: "#search-input", title: "Browse every organ", text: "Type an organ name or expand a body system and click an organ. You can also aim the nose pointer at an organ and hold steady for 5 seconds to open it." },
+  { frame: "anatomy", sel: "#ctrl-quiz", title: "Quiz yourself", text: "Click Quiz; if Motion Capture is off, the app starts it. Answer by making a fist at the named spot on your body, by holding the nose pointer on the correct avatar organ for 5 seconds, or by clicking that organ. Press Escape to end the quiz." },
+  { title: "Autoplay and leaving Anatomy", text: "Autoplay in the right panel starts the body show, and the button becomes Stop. Click Stop or press Escape to end it. “Back to Universe” closes Anatomy; use the world menu to choose another world." },
 ];
 const onboard = { i: 0, active: false, steps: ONBOARD_STEPS, key: 'ule-onboarded' };
-function onboardStart(steps, key) { onboard.steps = steps; onboard.key = key; onboardShow(0); }
+function setAnatomyGuidancePanel(open) {
+  const frame = el('anatomy-frame');
+  if (!frame) return false;
+  try {
+    const w = frame.contentWindow;
+    if (typeof w.__SET_ANATOMY_GUIDANCE_PANEL__ === 'function') {
+      return !!w.__SET_ANATOMY_GUIDANCE_PANEL__(open);
+    }
+    // Same-origin fallback for the brief interval before the bridge script has
+    // run. This also makes the behavior testable without waiting for Three.js.
+    const sidebar = frame.contentDocument?.getElementById('sidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('guidance-open', !!open);
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+function onboardStart(steps, key) {
+  onboard.steps = steps;
+  onboard.key = key;
+  setAnatomyGuidancePanel(key === 'ule-onboard-anatomy');
+  onboardShow(0);
+}
 function onboardShow(i) {
   const ov = el('onboard-overlay'), spot = el('onboard-spot'), card = el('onboard-card'), arrow = el('onboard-arrow');
   const step = onboard.steps[i]; if (!step) { onboardEnd(); return; }
@@ -2753,8 +4113,10 @@ function onboardShow(i) {
   }
 }
 function onboardEnd() {
+  const anatomyGuide = onboard.key === 'ule-onboard-anatomy';
   onboard.active = false;
   el('onboard-overlay').classList.remove('show');
+  if (anatomyGuide) setAnatomyGuidancePanel(false);
   try { localStorage.setItem(onboard.key, '1'); } catch (e) {}
 }
 window.__ONBOARD__ = {
@@ -2768,6 +4130,16 @@ el('onboard-skip').addEventListener('click', onboardEnd);
 el('onboard-replay').addEventListener('click', () =>
   explorer.anatomyActive ? onboardStart(ANATOMY_ONBOARD_STEPS, 'ule-onboard-anatomy')
                          : onboardStart(ONBOARD_STEPS, 'ule-onboarded'));
+// If the iframe finishes loading after the anatomy guide was requested, apply
+// the pending expanded state as soon as its sidebar exists.
+el('anatomy-frame').addEventListener('load', () => {
+  if (onboard.active && onboard.key === 'ule-onboard-anatomy') {
+    setAnatomyGuidancePanel(true);
+    // Re-measure the spotlight now that the expanded iframe controls have
+    // their final screen positions.
+    setTimeout(() => onboardShow(onboard.i), 280);
+  }
+});
 window.addEventListener('resize', () => { if (onboard.active) onboardShow(onboard.i); });
 let onboarded = false; try { onboarded = localStorage.getItem('ule-onboarded') === '1'; } catch (e) {}
 if (!onboarded) setTimeout(() => onboardShow(0), 900);
