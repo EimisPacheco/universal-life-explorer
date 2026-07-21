@@ -11167,6 +11167,16 @@
             speak(sentences, { title = '' } = {}) {
                 this.stop();
                 if (!sentences || !sentences.length) return;
+                // Embedded in Universal Life Explorer: ONE voice only. The host
+                // page's OpenAI guide (Dr. Somatic) narrates; local TTS would
+                // talk over it and the two agents would sound "confused".
+                // Captions stay on, paced by reading speed like the muted path.
+                if (window.parent !== window) {
+                    window.__ANATOMY_SPEECH__ = { text: sentences.join(' '), title, ts: Date.now() };
+                    showCaptions(title, sentences, { noVoice: true });
+                    runCaptionsUnvoiced();
+                    return;
+                }
                 showCaptions(title, sentences, { noVoice: !this.supported });
                 if (!this.supported) { runCaptionsUnvoiced(); return; }
                 // Sentence-sized utterances keep cancel() responsive.

@@ -1711,7 +1711,7 @@ class Explorer {
   // ---- anatomy embed ----
   showAnatomy() {
     const f = el('anatomy-frame');
-    if (!f.src) f.src = 'index.html';
+    if (!f.src) f.src = 'index.html?v=2';   // version param busts stale browser cache
     f.style.display = 'block';
     el('anatomy-launch').classList.remove('show');
     el('anatomy-back').classList.add('show');
@@ -1721,19 +1721,28 @@ class Explorer {
     this.anatomyActive = true;
     this._anatomyCanvas = null;                 // re-resolve the iframe's canvas lazily
     el('status').textContent = 'HUMAN ANATOMY — nose to point';
-    // Touch-to-explain bridge: when the user rests a hand on their own body
-    // (Learn Mode), the anatomy publishes the touched organ; Dr. Somatic
-    // explains it immediately. Works even while our camera is handed off.
+    // Bridges into the anatomy iframe, polled while it is open:
+    //  - wrap its getUserMedia so OUR camera is released BEFORE it opens its own
+    //  - touch-to-explain: touched organ -> Dr. Somatic speaks
+    //  - one-voice: the anatomy's narration lines are spoken by Dr. Somatic
     if (this._touchPoll) clearInterval(this._touchPoll);
     this._touchPoll = setInterval(() => {
       if (!this.anatomyActive) return;
+      this._wrapAnatomyCamera();
       try {
-        const t = el('anatomy-frame').contentWindow.__TOUCHED_ORGAN__;
+        const w = el('anatomy-frame').contentWindow;
+        const t = w.__TOUCHED_ORGAN__;
         if (t && t.ts !== this._lastTouchTs) {
           this._lastTouchTs = t.ts;
           this.setTarget(t.name, t.facts || '');
           if (this.realtime.connected) this.announceSelection(t.name, t.facts || '');
           else this.addMessage('assistant', t.name + ' — ' + (t.facts || 'touched.') + ' (Turn on Voice to hear this spoken.)');
+        }
+        const s = w.__ANATOMY_SPEECH__;
+        if (s && s.ts !== this._lastSpeechTs) {
+          this._lastSpeechTs = s.ts;
+          if (this.realtime.connected) this.realtime.say('As Dr. Somatic, say this to the user now, naturally: ' + String(s.text || '').slice(0, 900));
+          else this.addMessage('assistant', (s.title ? s.title + ' — ' : '') + String(s.text || '').slice(0, 400));
         }
       } catch (e) {}
     }, 700);
@@ -1861,6 +1870,21 @@ class Explorer {
 
   predict() {
     if (!this.handControlActive || !this.recognizer) return;
+    // While the anatomy's Motion Capture drives the body, FULLY release our
+    // camera and vision work. Holding a second open on the same device (at a
+    // different resolution) can stall the anatomy's video track on macOS —
+    // currentTime stops advancing, detection never runs, and the body freezes
+    // with "Tracking" still displayed. The mirror always wins; the nose pointer
+    // re-acquires the camera automatically when Motion Capture stops.
+    if (this.anatomyActive && this.anatomyMotionRunning()) {
+      this._autoReleasedForMotion = true;
+      this.stopHandTracking();                       // stops our tracks entirely
+      el('hand-btn').textContent = 'YIELDED TO MOTION CAPTURE';
+      const ns = el('nose-status'); if (ns) ns.textContent = 'Camera handed to the body mirror';
+      el('cursor').style.display = 'none';
+      this._watchMotionEnd();                      // nose/hands come back on their own
+      return;
+    }
     // Hand inference at ~30fps (every 2nd rAF): indistinguishable for control but
     // halves the dominant vision workload. Skipped frames reuse the last result,
     // so gesture PROCESSING (orbit smoothness) still runs at full rate.
@@ -1934,6 +1958,79 @@ class Explorer {
     }
 
     requestAnimationFrame(() => this.predict());
+  }
+
+  // Re-acquire the webcam after an automatic release (models are still loaded,
+  // so this is stream-only — much lighter than initHandTracking).
+  async resumeCamera() {
+    if (this.handControlActive || !this.recognizer) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const track = stream.getVideoTracks()[0];
+      if (track) track.onended = () => { this.stopHandTracking(); el('hand-btn').textContent = 'CAMERA LOST — CLICK TO RETRY'; };
+      const v = el('webcam'); v.srcObject = stream;
+      v.onloadedmetadata = () => {
+        v.play(); this.handControlActive = true;
+        this._lastPresenceMs = performance.now(); this._lastGestureRes = null;
+        el('hand-btn').textContent = 'SENSORS ACTIVE'; el('hand-btn').classList.add('active');
+        this.predict();
+      };
+    } catch (e) {
+      el('hand-btn').textContent = 'ACTIVATE SENSORS'; el('hand-btn').classList.remove('active');
+    }
+  }
+
+  // Wrap the iframe's getUserMedia so OUR camera is fully released BEFORE the
+  // anatomy opens its own. Releasing after the fact was too late: a stream
+  // opened while the device is contended can stay stalled forever, which froze
+  // the body mirror while the PiP still said "Tracking".
+  _wrapAnatomyCamera() {
+    try {
+      const w = el('anatomy-frame').contentWindow;
+      if (!w || !w.navigator || !w.navigator.mediaDevices || w.__CAM_WRAPPED__) return;
+      const md = w.navigator.mediaDevices;
+      const orig = md.getUserMedia.bind(md);
+      const self = this;
+      md.getUserMedia = async function (constraints) {
+        if (constraints && constraints.video && self.handControlActive) {
+          self._autoReleasedForMotion = true;
+          self.stopHandTracking();
+          el('hand-btn').textContent = 'YIELDED TO MOTION CAPTURE';
+          const ns = el('nose-status'); if (ns) ns.textContent = 'Camera handed to the body mirror';
+          el('cursor').style.display = 'none';
+          await new Promise(r => setTimeout(r, 200));   // let the OS actually free the device
+          self._watchMotionEnd();
+        }
+        return orig(constraints);
+      };
+      w.__CAM_WRAPPED__ = true;
+    } catch (e) {}
+  }
+
+  // Resume our camera once the anatomy's Motion Capture truly ends. Waits until
+  // the anatomy stream has been SEEN running so we don't resume mid-start (and
+  // gives up after 15s if it never starts, e.g. permission denied).
+  _watchMotionEnd() {
+    if (this._motionWatch) return;
+    let sawRunning = false; const startedAt = performance.now();
+    this._motionWatch = setInterval(() => {
+      const running = this.anatomyMotionRunning();
+      if (running) { sawRunning = true; return; }
+      if (!sawRunning && performance.now() - startedAt < 15000) return;
+      clearInterval(this._motionWatch); this._motionWatch = null;
+      this._autoReleasedForMotion = false;
+      this.resumeCamera();
+    }, 800);
+  }
+
+  // True while the anatomy app's Motion Capture holds a live camera stream
+  // (index.html sets #pose-video.srcObject on start and clears it on stop).
+  anatomyMotionRunning() {
+    try {
+      const doc = el('anatomy-frame').contentDocument;
+      const pv = doc && doc.getElementById('pose-video');
+      return !!(pv && pv.srcObject && pv.srcObject.active);
+    } catch (e) { return false; }
   }
 
   // Drive the anatomy iframe with the nose pointer. index.html selects organs on
