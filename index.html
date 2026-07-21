@@ -10624,6 +10624,14 @@
                         if (!st.has) { st.t.copy(_ik.target); st.p.copy(_ik.poleRaw); st.has = true; }
                         if (st.t.distanceTo(_ik.target) > 0.02) st.t.lerp(_ik.target, 0.35);
                         st.p.lerp(_ik.poleRaw, 0.35);
+                        // Touch snap: while the user's hand rests on a body region,
+                        // ease the avatar's matching wrist onto the touched organ so
+                        // the hand visibly LANDS on its head/heart/liver. Raw
+                        // retargeting alone stops short of the actual part.
+                        if (grab.touch.active && grab.touch.side === i && organs[grab.touch.organId]) {
+                            organs[grab.touch.organId].getWorldPosition(_touchAnchor);
+                            st.t.lerp(_touchAnchor, 0.30);
+                        }
                         placed = solveArmIK(tag, st.t, st.p, 0.3);
                     }
                 }
@@ -10700,6 +10708,11 @@
             holdStart: 0,
             lostSince: 0,
             label: '',
+            // Touch-and-hold: resting an open hand on a body region for ~1s
+            // publishes the touched organ (for the host page's voice guide) and
+            // snaps the avatar's matching hand onto that organ.
+            touch: { active: false, organId: null, side: -1 },
+            touchPublishedId: null,
         };
 
         // Anatomically correct sides: u is negative toward the user's right.
@@ -10767,6 +10780,48 @@
             kidneyLeft:  { ids: ['kidneyLeft', 'kidneyRight'], patientLeft: true },
             kidneyRight: { ids: ['kidneyLeft', 'kidneyRight'], patientLeft: false },
         };
+        // ---------- Touch-and-hold ("explain what I'm touching") ----------
+        const _touchAnchor = new THREE.Vector3();
+        // Which pose side (0 = L, 1 = R, matching the arm solver) a gesture-model
+        // hand belongs to: nearest pose wrist wins. Robust to mirroring because
+        // both models share the same normalized video space.
+        function nearestPoseSide(pose, hand) {
+            const palm = hand?.[9] || hand?.[0];
+            const lw = pose?.[15], rw = pose?.[16];
+            if (!palm || !lw || !rw) return -1;
+            const dl = Math.hypot(palm.x - lw.x, palm.y - lw.y);
+            const dr = Math.hypot(palm.x - rw.x, palm.y - rw.y);
+            return dl <= dr ? 0 : 1;
+        }
+        function organTouchFacts(organId) {
+            const info = organInfo[organId];
+            if (!info) return '';
+            const fns = Array.isArray(info.functions) ? info.functions.slice(0, 2).join('; ') : '';
+            return [info.desc || '', fns].filter(Boolean).join(' ').slice(0, 500);
+        }
+        function activateTouch(region, hand, pose) {
+            const organId = resolveOrganId(region.id);
+            if (!organId || !organs[organId]) return;
+            grab.touch.active = true;
+            grab.touch.organId = organId;
+            grab.touch.side = nearestPoseSide(pose, hand);
+            // Publish once per touched organ; the host page (Universal Life
+            // Explorer) polls this and has its voice guide explain the organ.
+            if (grab.touchPublishedId !== organId) {
+                grab.touchPublishedId = organId;
+                window.__TOUCHED_ORGAN__ = {
+                    id: organId,
+                    name: organInfo[organId]?.name || region.label,
+                    facts: organTouchFacts(organId),
+                    ts: Date.now(),
+                };
+            }
+        }
+        function clearTouch() {
+            grab.touch.active = false;
+            grab.touch.side = -1;
+        }
+
         function resolveOrganId(regionId) {
             const pair = PAIRED_REGIONS[regionId];
             if (!pair) return regionId;
@@ -11763,6 +11818,7 @@
             updatePresentation(delta);
             if (!grab.enabled || !grab.available || tracker.state !== 'tracking') {
                 if (grab.state === 'holding') endPresentation();
+                clearTouch();
                 setGrabLabel('');
                 return;
             }
@@ -11809,6 +11865,7 @@
             }
 
             if (grab.state === 'holding') {
+                clearTouch();   // a grabbed organ supersedes touch narration
                 // You grab the organ while your hand is still on your body, so
                 // "put it back" cannot simply mean "hand is near the torso".
                 // The hand must first travel away — only then does coming home
@@ -11849,6 +11906,7 @@
             if (!bestRegion) {
                 grab.hoverId = null;
                 grab.fistSince = 0;
+                clearTouch();
                 setGrabLabel('');
                 return;
             }
@@ -11857,6 +11915,19 @@
                 grab.hoverId = bestRegion.id;
                 grab.hoverSince = now;
                 grab.fistSince = 0;
+                // Moving to a different body part re-arms publishing, so the
+                // voice switches organs as the hand travels.
+                grab.touchPublishedId = null;
+                clearTouch();
+            }
+
+            // Open-hand touch: resting the hand on a region for ~1s means
+            // "tell me about this" — publish the organ and snap the avatar's
+            // hand onto it. A fist supersedes touch (that's the grab flow).
+            if (!bestIsFist && now - grab.hoverSince > 1000) {
+                activateTouch(bestRegion, hands[bestHandIndex], pose);
+            } else if (bestIsFist) {
+                clearTouch();
             }
 
             if (!grab.armed) {
