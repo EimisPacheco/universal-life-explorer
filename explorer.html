@@ -1844,15 +1844,26 @@ class Explorer {
 
   predict() {
     if (!this.handControlActive || !this.recognizer) return;
-    // While the anatomy's Motion Capture drives the body, park ALL of our vision
-    // work (gesture + face inference). Two MediaPipe stacks on one GPU starved
-    // the body mirror and made it lag — the mirror always wins. We poll cheaply
-    // and the nose pointer resumes by itself when Motion Capture stops.
+    // While the anatomy's Motion Capture drives the body, FULLY release our
+    // camera and vision work. Holding a second open on the same device (at a
+    // different resolution) can stall the anatomy's video track on macOS —
+    // currentTime stops advancing, detection never runs, and the body freezes
+    // with "Tracking" still displayed. The mirror always wins; the nose pointer
+    // re-acquires the camera automatically when Motion Capture stops.
     if (this.anatomyActive && this.anatomyMotionRunning()) {
-      el('gesture-badge').textContent = 'Yielded to Motion Capture';
-      const ns = el('nose-status'); if (ns) ns.textContent = 'Paused while the body mirrors you';
+      this._autoReleasedForMotion = true;
+      this.stopHandTracking();                       // stops our tracks entirely
+      el('hand-btn').textContent = 'YIELDED TO MOTION CAPTURE';
+      const ns = el('nose-status'); if (ns) ns.textContent = 'Camera handed to the body mirror';
       el('cursor').style.display = 'none';
-      setTimeout(() => this.predict(), 600);
+      const watch = setInterval(() => {
+        if (!this._autoReleasedForMotion) { clearInterval(watch); return; }
+        if (!this.anatomyMotionRunning()) {
+          clearInterval(watch);
+          this._autoReleasedForMotion = false;
+          this.resumeCamera();                       // nose/hands come back on their own
+        }
+      }, 800);
       return;
     }
     // Hand inference at ~30fps (every 2nd rAF): indistinguishable for control but
@@ -1928,6 +1939,26 @@ class Explorer {
     }
 
     requestAnimationFrame(() => this.predict());
+  }
+
+  // Re-acquire the webcam after an automatic release (models are still loaded,
+  // so this is stream-only — much lighter than initHandTracking).
+  async resumeCamera() {
+    if (this.handControlActive || !this.recognizer) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const track = stream.getVideoTracks()[0];
+      if (track) track.onended = () => { this.stopHandTracking(); el('hand-btn').textContent = 'CAMERA LOST — CLICK TO RETRY'; };
+      const v = el('webcam'); v.srcObject = stream;
+      v.onloadedmetadata = () => {
+        v.play(); this.handControlActive = true;
+        this._lastPresenceMs = performance.now(); this._lastGestureRes = null;
+        el('hand-btn').textContent = 'SENSORS ACTIVE'; el('hand-btn').classList.add('active');
+        this.predict();
+      };
+    } catch (e) {
+      el('hand-btn').textContent = 'ACTIVATE SENSORS'; el('hand-btn').classList.remove('active');
+    }
   }
 
   // True while the anatomy app's Motion Capture holds a live camera stream
