@@ -1441,6 +1441,10 @@ class Explorer {
     const selFacts = (obj.data && obj.data.facts)
       || (typeof PLANET_LAYER_FACTS !== 'undefined' && PLANET_LAYER_FACTS[obj.name]) || '';
     if (selFacts) this.setTarget(obj.name, selFacts);
+    // A dwell-select is an explicit "tell me about this" — holding the gaze for
+    // seconds until the object zooms in is intent, unlike mere hovering (which
+    // stays silent). The voice starts describing the selection immediately.
+    this.announceSelection(obj.name, selFacts);
     this.currentExamined = obj.mesh; this.isBroken = false; this.brokenGroup = null;
     this.selectionProgress = 0; this.setCursor(null);
     let target;
@@ -1963,6 +1967,8 @@ class Explorer {
     this._anatomyTargetName = name;
     const facts = (doc.getElementById('detail-body')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 700);
     this.setTarget(name, facts);
+    // Organ dwell-select = explicit intent: the voice describes it right away.
+    this.announceSelection(name, facts);
   }
 
   // Two overlays:
@@ -2071,6 +2077,21 @@ class Explorer {
     this.currentTargetFacts = facts || '';
     const s = el('nose-target'); if (s) s.textContent = '🎯 ' + name;
     if (this.realtime) this.realtime.setContext(name, this.currentTargetFacts);
+  }
+
+  // Speak about a just-selected object without being asked. Only fires when the
+  // voice session is live; hover targeting remains silent by design.
+  announceSelection(name, facts) {
+    if (!name || !this.realtime || !this.realtime.connected) return;
+    // Don't re-announce the same object back-to-back (e.g. quick re-select).
+    if (this._lastAnnounced === name && performance.now() - (this._lastAnnouncedMs || 0) < 30000) return;
+    this._lastAnnounced = name; this._lastAnnouncedMs = performance.now();
+    this.realtime.say(
+      'The user just held their gaze on ' + name + ' and it is now selected and shown up close. ' +
+      'Without waiting to be asked, give a short spoken introduction to ' + name +
+      (facts ? ' using these facts: ' + facts : '') +
+      ' Keep it to two or three sentences, then invite a follow-up question.'
+    );
   }
 
   fireGuide(event, detail) {
