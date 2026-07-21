@@ -1844,6 +1844,17 @@ class Explorer {
 
   predict() {
     if (!this.handControlActive || !this.recognizer) return;
+    // While the anatomy's Motion Capture drives the body, park ALL of our vision
+    // work (gesture + face inference). Two MediaPipe stacks on one GPU starved
+    // the body mirror and made it lag — the mirror always wins. We poll cheaply
+    // and the nose pointer resumes by itself when Motion Capture stops.
+    if (this.anatomyActive && this.anatomyMotionRunning()) {
+      el('gesture-badge').textContent = 'Yielded to Motion Capture';
+      const ns = el('nose-status'); if (ns) ns.textContent = 'Paused while the body mirrors you';
+      el('cursor').style.display = 'none';
+      setTimeout(() => this.predict(), 600);
+      return;
+    }
     // Hand inference at ~30fps (every 2nd rAF): indistinguishable for control but
     // halves the dominant vision workload. Skipped frames reuse the last result,
     // so gesture PROCESSING (orbit smoothness) still runs at full rate.
@@ -1917,6 +1928,16 @@ class Explorer {
     }
 
     requestAnimationFrame(() => this.predict());
+  }
+
+  // True while the anatomy app's Motion Capture holds a live camera stream
+  // (index.html sets #pose-video.srcObject on start and clears it on stop).
+  anatomyMotionRunning() {
+    try {
+      const doc = el('anatomy-frame').contentDocument;
+      const pv = doc && doc.getElementById('pose-video');
+      return !!(pv && pv.srcObject && pv.srcObject.active);
+    } catch (e) { return false; }
   }
 
   // Drive the anatomy iframe with the nose pointer. index.html selects organs on
