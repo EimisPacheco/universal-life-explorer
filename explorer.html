@@ -1711,7 +1711,7 @@ class Explorer {
   // ---- anatomy embed ----
   showAnatomy() {
     const f = el('anatomy-frame');
-    if (!f.src) f.src = 'index.html';
+    if (!f.src) f.src = 'index.html?v=2';   // version param busts stale browser cache
     f.style.display = 'block';
     el('anatomy-launch').classList.remove('show');
     el('anatomy-back').classList.add('show');
