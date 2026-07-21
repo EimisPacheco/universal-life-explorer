@@ -1,0 +1,111 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Universal Life Explorer — Architecture</title>
+<style>html,body{margin:0;background:#0a0a14}</style></head>
+<body>
+<svg width="1200" height="900" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b7bb8"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#00cc77"/>
+    </marker>
+  </defs>
+
+  <text x="600" y="46" text-anchor="middle" fill="#c9b8ec" font-size="30" font-weight="bold" letter-spacing="4">UNIVERSAL LIFE EXPLORER — ARCHITECTURE</text>
+
+  <!-- ============ BROWSER ============ -->
+  <rect x="40" y="80" width="740" height="640" rx="14" fill="#12101f" stroke="#a855f7" stroke-width="2"/>
+  <text x="60" y="112" fill="#a855f7" font-size="19" font-weight="bold">BROWSER (Chrome) — zero build step</text>
+
+  <!-- webcam + mic -->
+  <rect x="60" y="132" width="180" height="70" rx="10" fill="#1b1830" stroke="#665a8c"/>
+  <text x="150" y="160" text-anchor="middle" fill="#e6ddff" font-size="15" font-weight="bold">Webcam + Mic</text>
+  <text x="150" y="182" text-anchor="middle" fill="#9a8fc0" font-size="12">frames stay on device</text>
+
+  <!-- mediapipe -->
+  <rect x="60" y="240" width="300" height="120" rx="10" fill="#1b1830" stroke="#665a8c"/>
+  <text x="210" y="266" text-anchor="middle" fill="#e6ddff" font-size="15" font-weight="bold">MediaPipe Tasks (vendored, GPU)</text>
+  <text x="210" y="292" text-anchor="middle" fill="#9a8fc0" font-size="13">FaceLandmarker — nose pose @ 12 fps</text>
+  <text x="210" y="312" text-anchor="middle" fill="#9a8fc0" font-size="13">GestureRecognizer — 2 hands @ 30 fps</text>
+  <text x="210" y="338" text-anchor="middle" fill="#7fbf9f" font-size="12">offline: wasm + models served locally</text>
+
+  <!-- input layer -->
+  <rect x="420" y="240" width="330" height="120" rx="10" fill="#1b1830" stroke="#665a8c"/>
+  <text x="585" y="266" text-anchor="middle" fill="#e6ddff" font-size="15" font-weight="bold">Input Engines</text>
+  <text x="585" y="292" text-anchor="middle" fill="#9a8fc0" font-size="13">Nose pointer: One Euro filter + dwell select</text>
+  <text x="585" y="312" text-anchor="middle" fill="#9a8fc0" font-size="13">Gestures: orbit / zoom / two-hand planet rip</text>
+  <text x="585" y="334" text-anchor="middle" fill="#9a8fc0" font-size="13">Mouse + keyboard fallbacks</text>
+
+  <!-- 3D engine -->
+  <rect x="60" y="400" width="420" height="150" rx="10" fill="#1b1830" stroke="#665a8c"/>
+  <text x="270" y="428" text-anchor="middle" fill="#e6ddff" font-size="15" font-weight="bold">Three.js Scene Engine (explorer.html)</text>
+  <text x="270" y="454" text-anchor="middle" fill="#9a8fc0" font-size="13">6 worlds: Solar • Molecules • Atom • Pyramid • Flower • Body</text>
+  <text x="270" y="474" text-anchor="middle" fill="#9a8fc0" font-size="13">Procedural everything: textures, organs, DNA, masonry</text>
+  <text x="270" y="494" text-anchor="middle" fill="#9a8fc0" font-size="13">Guided-tour engine • X-ray reveals • rip-open cores</text>
+  <text x="270" y="520" text-anchor="middle" fill="#7fbf9f" font-size="12">perf: dispose-on-switch, adaptive pixel ratio, idle shutdown</text>
+
+  <!-- anatomy iframe -->
+  <rect x="520" y="400" width="230" height="150" rx="10" fill="#171326" stroke="#ff6b9d"/>
+  <text x="635" y="428" text-anchor="middle" fill="#ffb3cd" font-size="15" font-weight="bold">Human Anatomy</text>
+  <text x="635" y="450" text-anchor="middle" fill="#9a8fc0" font-size="13">index.html in iframe</text>
+  <text x="635" y="470" text-anchor="middle" fill="#9a8fc0" font-size="13">25+ procedural organs</text>
+  <text x="635" y="490" text-anchor="middle" fill="#9a8fc0" font-size="13">pose-mirror, quiz, tutor</text>
+  <text x="635" y="516" text-anchor="middle" fill="#7fbf9f" font-size="12">driven by synthetic pointer</text>
+  <text x="635" y="532" text-anchor="middle" fill="#7fbf9f" font-size="12">events — app untouched</text>
+
+  <!-- realtime voice client -->
+  <rect x="60" y="590" width="690" height="105" rx="10" fill="#1b1830" stroke="#665a8c"/>
+  <text x="405" y="618" text-anchor="middle" fill="#e6ddff" font-size="15" font-weight="bold">RealtimeVoice Client — WebRTC audio + data channel</text>
+  <text x="405" y="644" text-anchor="middle" fill="#9a8fc0" font-size="13">5 personas (Cosmos, Prof. Bond, Indy, Flora, Dr. Somatic) • look-target context injection</text>
+  <text x="405" y="668" text-anchor="middle" fill="#00cc77" font-size="13" font-weight="bold">7 function-calling tools: switch_view • show_inside • focus_object • start_tour • stop_tour • set_element • close_view</text>
+
+  <!-- ============ SERVER ============ -->
+  <rect x="830" y="80" width="330" height="330" rx="14" fill="#101a14" stroke="#00cc77" stroke-width="2"/>
+  <text x="850" y="112" fill="#00cc77" font-size="19" font-weight="bold">server.py — Python stdlib</text>
+  <rect x="850" y="132" width="290" height="64" rx="10" fill="#152418" stroke="#2e6647"/>
+  <text x="995" y="158" text-anchor="middle" fill="#d2f5e2" font-size="14" font-weight="bold">Static + /vendor assets</text>
+  <text x="995" y="180" text-anchor="middle" fill="#8fbf9f" font-size="12">explorer.html • index.html • wasm • models</text>
+  <rect x="850" y="212" width="290" height="80" rx="10" fill="#152418" stroke="#2e6647"/>
+  <text x="995" y="238" text-anchor="middle" fill="#d2f5e2" font-size="14" font-weight="bold">/api/guide • /api/ask</text>
+  <text x="995" y="260" text-anchor="middle" fill="#8fbf9f" font-size="12">typed questions → Responses API</text>
+  <text x="995" y="280" text-anchor="middle" fill="#8fbf9f" font-size="12">target + facts grounding per request</text>
+  <rect x="850" y="308" width="290" height="80" rx="10" fill="#152418" stroke="#2e6647"/>
+  <text x="995" y="334" text-anchor="middle" fill="#d2f5e2" font-size="14" font-weight="bold">/session — SDP proxy</text>
+  <text x="995" y="356" text-anchor="middle" fill="#8fbf9f" font-size="12">mints Realtime WebRTC session</text>
+  <text x="995" y="376" text-anchor="middle" fill="#8fbf9f" font-size="12">API key server-side only (.env)</text>
+
+  <!-- ============ OPENAI ============ -->
+  <rect x="830" y="470" width="330" height="250" rx="14" fill="#1a1410" stroke="#ff9f43" stroke-width="2"/>
+  <text x="850" y="502" fill="#ff9f43" font-size="19" font-weight="bold">OPENAI</text>
+  <rect x="850" y="522" width="290" height="56" rx="10" fill="#241c14" stroke="#8c6a3f"/>
+  <text x="995" y="546" text-anchor="middle" fill="#ffe2c2" font-size="14" font-weight="bold">GPT-5.6 (gpt-5.6-luna)</text>
+  <text x="995" y="566" text-anchor="middle" fill="#c0a684" font-size="12">Responses API — guide + anatomy tutor</text>
+  <rect x="850" y="592" width="290" height="56" rx="10" fill="#241c14" stroke="#8c6a3f"/>
+  <text x="995" y="616" text-anchor="middle" fill="#ffe2c2" font-size="14" font-weight="bold">gpt-realtime-2.1</text>
+  <text x="995" y="636" text-anchor="middle" fill="#c0a684" font-size="12">voice "marin" + tool calls over WebRTC</text>
+  <rect x="850" y="662" width="290" height="44" rx="10" fill="#241c14" stroke="#8c6a3f"/>
+  <text x="995" y="690" text-anchor="middle" fill="#ffe2c2" font-size="13" font-weight="bold">gpt-4o-mini-transcribe — speech in</text>
+
+  <!-- arrows -->
+  <path d="M150,202 L190,240" stroke="#8b7bb8" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <path d="M360,300 L420,300" stroke="#8b7bb8" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <path d="M540,360 L340,400" stroke="#8b7bb8" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <path d="M620,360 L635,400" stroke="#8b7bb8" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <path d="M270,550 L340,590" stroke="#8b7bb8" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <path d="M240,170 L850,170 " stroke="#2e6647" stroke-width="2" fill="none" stroke-dasharray="6 5" marker-end="url(#arrg)"/>
+  <text x="560" y="160" text-anchor="middle" fill="#5f9f7f" font-size="12">HTTP :8010</text>
+  <path d="M480,470 L850,252" stroke="#2e6647" stroke-width="2.5" fill="none" marker-end="url(#arrg)"/>
+  <text x="700" y="352" fill="#5f9f7f" font-size="12">"what is this?" + target</text>
+  <path d="M750,620 L850,360 " stroke="#2e6647" stroke-width="2.5" fill="none" marker-end="url(#arrg)"/>
+  <text x="795" y="500" fill="#5f9f7f" font-size="12">SDP</text>
+  <path d="M995,388 L995,470" stroke="#c07f3f" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <path d="M750,660 C 800,700 830,690 850,640" stroke="#c07f3f" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+  <text x="795" y="708" text-anchor="middle" fill="#c09f6f" font-size="12">WebRTC voice + tools</text>
+
+  <!-- footer -->
+  <text x="600" y="770" text-anchor="middle" fill="#6f6590" font-size="14">Voice tool call → app action → function_call_output → model confirms out loud</text>
+  <text x="600" y="800" text-anchor="middle" fill="#6f6590" font-size="14">Privacy: vision runs on-device • webcam never leaves the browser • API key never reaches the client</text>
+  <text x="600" y="850" text-anchor="middle" fill="#4a4266" font-size="13">github.com/EimisPacheco/universal-life-explorer</text>
+</svg>
+</body></html>
