@@ -1,0 +1,16 @@
+# Secrets — .env holds real API keys (OpenAI etc.); never commit it.
+.env
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+
+# Local tooling / caches
+__pycache__/
+*.pyc
+.claude/
+
+# Heavy anatomy reference source data (dev-only; the app only fetches reference-atlas/fits/*.json)
+reference-atlas/models/
+reference-atlas/source-metadata/

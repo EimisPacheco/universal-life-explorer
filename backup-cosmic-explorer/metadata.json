@@ -1,0 +1,9 @@
+{
+  "name": "backup Cosmic Explorer",
+  "description": "Explore the Solar System with hand gestures and an AI guide.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "prompt": "You are a knowledgeable astronomy guide teaching students about the universe.",
+  "majorCapabilities": []
+}

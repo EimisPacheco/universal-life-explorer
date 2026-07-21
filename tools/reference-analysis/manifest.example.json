@@ -1,0 +1,69 @@
+{
+  "name": "official-atlas-priority-organs",
+  "description": "Replace placeholder paths and metadata with one registered atlas release.",
+  "reference_mesh": "reference/united-body.glb",
+  "output_dir": "output",
+  "batch_output": "priority-organs.analysis.json",
+  "meshes": [
+    {
+      "path": "reference/left-lung.glb",
+      "label": "left-lung",
+      "organ": "left lung",
+      "priority": 1,
+      "atlas": "REPLACE_WITH_OFFICIAL_ATLAS",
+      "source_url": "REPLACE_WITH_DIRECT_SOURCE_URL",
+      "license": "REPLACE_WITH_VERIFIED_LICENSE",
+      "ontology_id": "REPLACE_WITH_ATLAS_ID"
+    },
+    {
+      "path": "reference/right-lung.glb",
+      "label": "right-lung",
+      "organ": "right lung",
+      "priority": 1,
+      "atlas": "REPLACE_WITH_OFFICIAL_ATLAS",
+      "source_url": "REPLACE_WITH_DIRECT_SOURCE_URL",
+      "license": "REPLACE_WITH_VERIFIED_LICENSE",
+      "ontology_id": "REPLACE_WITH_ATLAS_ID"
+    },
+    {
+      "path": "reference/liver.glb",
+      "label": "liver",
+      "organ": "liver",
+      "priority": 2,
+      "atlas": "REPLACE_WITH_OFFICIAL_ATLAS",
+      "source_url": "REPLACE_WITH_DIRECT_SOURCE_URL",
+      "license": "REPLACE_WITH_VERIFIED_LICENSE",
+      "ontology_id": "REPLACE_WITH_ATLAS_ID"
+    },
+    {
+      "path": "reference/pelvis.glb",
+      "label": "pelvis",
+      "organ": "bony pelvis",
+      "priority": 3,
+      "atlas": "REPLACE_WITH_OFFICIAL_ATLAS",
+      "source_url": "REPLACE_WITH_DIRECT_SOURCE_URL",
+      "license": "REPLACE_WITH_VERIFIED_LICENSE",
+      "ontology_id": "REPLACE_WITH_ATLAS_ID"
+    },
+    {
+      "path": "reference/small-intestine.glb",
+      "label": "small-intestine",
+      "organ": "small intestine",
+      "priority": 4,
+      "atlas": "REPLACE_WITH_OFFICIAL_ATLAS",
+      "source_url": "REPLACE_WITH_DIRECT_SOURCE_URL",
+      "license": "REPLACE_WITH_VERIFIED_LICENSE",
+      "ontology_id": "REPLACE_WITH_ATLAS_ID"
+    },
+    {
+      "path": "reference/large-intestine.glb",
+      "label": "large-intestine",
+      "organ": "large intestine",
+      "priority": 4,
+      "atlas": "REPLACE_WITH_OFFICIAL_ATLAS",
+      "source_url": "REPLACE_WITH_DIRECT_SOURCE_URL",
+      "license": "REPLACE_WITH_VERIFIED_LICENSE",
+      "ontology_id": "REPLACE_WITH_ATLAS_ID"
+    }
+  ]
+}

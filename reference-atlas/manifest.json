@@ -1,0 +1,205 @@
+{
+  "schema_version": "1.0.0",
+  "retrieved_at": "2026-07-17",
+  "purpose": "Official medical 3D references for measurement and procedural reconstruction; not runtime assets.",
+  "canonical_frame": {
+    "source": "Human Reference Atlas female united body v1.5",
+    "subject": "Visible Human Female",
+    "sex": "female",
+    "units": "meter",
+    "handedness": "right-handed glTF 2.0",
+    "axes": {
+      "x_positive": "anatomical left",
+      "y_positive": "superior",
+      "z_positive": "anterior"
+    },
+    "coordinate_notes": "HRA organ vertices are already registered in the shared female-body frame. Preserve their coordinates and do not independently recenter organ meshes. The extracted united-body POSITION extent is 0.967442058 x 1.666348242 x 0.455284934 meters.",
+    "local_path": "models/hra/united-female-v1.5.glb"
+  },
+  "licenses": {
+    "hra": {
+      "name": "Creative Commons Attribution 4.0 International",
+      "spdx": "CC-BY-4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health"
+    },
+    "bodyparts3d": {
+      "current_name": "Creative Commons Attribution 4.0 International",
+      "current_spdx": "CC-BY-4.0",
+      "current_license_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html",
+      "required_attribution": "BodyParts3D © The Database Center for Life Science licensed under CC Attribution 4.0 International",
+      "legacy_embedded_notice": "The OBJ header still states CC Attribution-ShareAlike 2.1 Japan. Retain that embedded notice and attribution unless legal review confirms the 2025 CC BY 4.0 relicensing supersedes it for this archived mesh."
+    }
+  },
+  "models": [
+    {
+      "organ": "lungs",
+      "source": "Human Reference Atlas 3D Reference Object Library",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health",
+      "version": "1.3",
+      "release": "HRA v1.4",
+      "sex": "female",
+      "subject_basis": "Visible Human Female",
+      "units": "meter",
+      "coordinate_notes": "Registered HRA female common frame; +X anatomical left, +Y superior, +Z anterior; includes lobes and intrapulmonary bronchi but omits larynx, trachea, and main bronchi.",
+      "source_url": "https://cdn.humanatlas.io/hra-releases/v1.4/models/3d-vh-f-lung.glb",
+      "record_url": "https://doi.org/10.48539/HBM794.PKQV.978",
+      "license": "CC-BY-4.0",
+      "format": "glb",
+      "local_path": "models/hra/lung-female-v1.3.glb",
+      "bytes": 23253972,
+      "sha256": "323d27bb76ba2c5b140ff31ad5190627eeb8d4e37cd220e4b541655d67789c1a",
+      "position_bbox_m": {
+        "min": [-0.130528927, 0.367073059, -0.156421378],
+        "max": [0.120605811, 0.5901093, -0.00381648052]
+      }
+    },
+    {
+      "organ": "liver",
+      "source": "Human Reference Atlas 3D Reference Object Library",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health",
+      "version": "1.1",
+      "release": "HRA v1.2",
+      "sex": "female",
+      "subject_basis": "Visible Human Female",
+      "units": "meter",
+      "coordinate_notes": "Registered HRA female common frame; preserve world coordinates.",
+      "source_url": "https://cdn.humanatlas.io/hra-releases/v1.2/models/VH_F_Liver.glb",
+      "record_url": "https://doi.org/10.48539/HBM798.JZZM.649",
+      "license": "CC-BY-4.0",
+      "format": "glb",
+      "local_path": "models/hra/liver-female-v1.1.glb",
+      "bytes": 1738032,
+      "sha256": "ad9b0be0ff253e7bfe31bfffc00017dafce226d4f3e7804a81cbb4c2e269d598",
+      "position_bbox_m": {
+        "min": [-0.134887323, 0.262525082, -0.153842822],
+        "max": [0.112220168, 0.43249774, 0.012434097]
+      }
+    },
+    {
+      "organ": "large_intestine",
+      "source": "Human Reference Atlas 3D Reference Object Library",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health",
+      "version": "1.2",
+      "release": "HRA v1.2",
+      "sex": "female",
+      "subject_basis": "Stony Brook University model used as the base for a custom HRA medical-illustration model",
+      "units": "meter",
+      "coordinate_notes": "Registered HRA female common frame; preserve world coordinates.",
+      "source_url": "https://cdn.humanatlas.io/hra-releases/v1.2/models/SBU_F_Intestine_Large.glb",
+      "record_url": "https://doi.org/10.48539/HBM637.SRWT.828",
+      "license": "CC-BY-4.0",
+      "format": "glb",
+      "local_path": "models/hra/large-intestine-female-v1.2.glb",
+      "bytes": 387184,
+      "sha256": "a14bca59d855546b8343e732c1bf0a146fbdb8ef4d73a3eac333fc298ecb5d1d",
+      "position_bbox_m": {
+        "min": [-0.126454666, -0.0132815512, -0.146505579],
+        "max": [0.1168211, 0.2816656, 0.0469122976]
+      }
+    },
+    {
+      "organ": "small_intestine",
+      "source": "Human Reference Atlas 3D Reference Object Library",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health",
+      "version": "1.1",
+      "release": "HRA v1.2",
+      "sex": "female",
+      "subject_basis": "Visible Human Female",
+      "units": "meter",
+      "coordinate_notes": "Registered HRA female common frame; preserve world coordinates. Model metadata states a 200 cm centerline with 1 cm and 5 cm measurement markers and a marked jejunoileal junction.",
+      "source_url": "https://cdn.humanatlas.io/hra-releases/v1.2/models/VH_F_Small_Intestine.glb",
+      "record_url": "https://doi.org/10.48539/HBM887.PSNL.257",
+      "license": "CC-BY-4.0",
+      "format": "glb",
+      "local_path": "models/hra/small-intestine-female-v1.1.glb",
+      "bytes": 856388,
+      "sha256": "34cc2d8aa0c782080cadc2e8474a727dce50f829bec3a4857202eba97e110efb",
+      "position_bbox_m": {
+        "min": [-0.08713378, 0.0788841546, -0.0781656653],
+        "max": [0.07443769, 0.296116859, 0.0218280889]
+      }
+    },
+    {
+      "organ": "pelvis",
+      "source": "Human Reference Atlas 3D Reference Object Library",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health",
+      "version": "1.2",
+      "release": "HRA v1.2",
+      "sex": "female",
+      "subject_basis": "Visible Human Female",
+      "units": "meter",
+      "coordinate_notes": "Registered HRA female common frame; preserve world coordinates.",
+      "source_url": "https://cdn.humanatlas.io/hra-releases/v1.2/models/VH_F_Pelvis.glb",
+      "record_url": "https://doi.org/10.48539/HBM427.CCRP.887",
+      "license": "CC-BY-4.0",
+      "format": "glb",
+      "local_path": "models/hra/pelvis-female-v1.2.glb",
+      "bytes": 1593336,
+      "sha256": "155603d0c44a8ed1e0ca307f1ec3037941304f29f4187631135a9a150fab048d",
+      "position_bbox_m": {
+        "min": [-0.166996166, -0.0468344279, -0.182454556],
+        "max": [0.149841726, 0.164658442, 0.000289921765]
+      }
+    },
+    {
+      "organ": "female_united_body",
+      "source": "Human Reference Atlas 3D Reference Object Library",
+      "publisher": "HuBMAP",
+      "funder": "National Institutes of Health",
+      "version": "1.5",
+      "release": "HRA v2.0",
+      "sex": "female",
+      "subject_basis": "Visible Human Female",
+      "units": "meter",
+      "coordinate_notes": "Canonical HRA female-body registration frame for all HRA female organ references in this manifest.",
+      "source_url": "https://cdn.humanatlas.io/hra-releases/v2.0/models/3d-vh-f-united.glb.7z",
+      "record_url": "https://doi.org/10.48539/HBM352.BTSQ.586",
+      "license": "CC-BY-4.0",
+      "format": "glb extracted from 7z",
+      "source_archive_local_path": "source-metadata/hra-female-united-v1.5.glb.7z",
+      "local_path": "models/hra/united-female-v1.5.glb",
+      "bytes": 211624968,
+      "sha256": "472567a56896b9b7890508da6501fbf858e56aaa30745365f7a71ade782b529c",
+      "position_bbox_m": {
+        "min": [-0.489561558, -0.794760942, -0.222619534],
+        "max": [0.4778805, 0.8715873, 0.2326654]
+      }
+    },
+    {
+      "organ": "stomach",
+      "source": "BodyParts3D v4.0 PART-OF tree",
+      "publisher": "The Database Center for Life Science",
+      "version": "4.0",
+      "polygon_reduction_rate": "99%",
+      "sex": "male",
+      "subject_basis": "BodyParts3D adult human male common-coordinate model",
+      "units": "millimeter",
+      "coordinate_notes": "BodyParts3D frame: +X anatomical left, -X right, +Y posterior, -Y anterior, +Z superior; all body-part Z values are positive. This male stomach is a secondary morphology reference and must not be directly registered into the HRA female frame.",
+      "source_url": "https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/partof_BP3D_4.0_obj_99.zip",
+      "record_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html",
+      "license": "CC-BY-4.0 current database license; embedded OBJ contains legacy CC-BY-SA-2.1-JP notice",
+      "format": "obj",
+      "identifiers": {
+        "fma": "FMA:7148",
+        "representation_id": "BP9480",
+        "element_file_id": "FJ2564"
+      },
+      "source_archive_local_path": "source-metadata/partof_BP3D_4.0_obj_99.zip",
+      "local_path": "models/bodyparts3d/stomach-bodyparts3d-v4.0-99.obj",
+      "bytes": 106977,
+      "sha256": "cb78c3f2214fd21a16fa6c9f2389b9aa874e9d3ce624c42b34d4563c31554c67",
+      "position_bbox_mm": {
+        "min": [-28.9516, -194.37, 1039.88],
+        "max": [105.524, -81.4799, 1156.89]
+      },
+      "reported_volume_cm3": 562.7905
+    }
+  ]
+}

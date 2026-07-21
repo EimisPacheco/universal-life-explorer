@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple SkinnedMesh - Working Demo</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        body { background: #141920; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>SkinnedMesh Demo</h3>
+        <p>Based on anatomy_final repo</p>
+        <p>Drag to rotate, scroll to zoom</p>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup (like anatomy_final index.html line 86-107)
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+
+        const camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            1,
+            100000
+        );
+        camera.position.set(2000, 5000, 5000);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setClearColor(0xffffff);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting (exactly from anatomy_final index.html line 90-100)
+        const light1 = new THREE.DirectionalLight(0xffffff, 1);
+        light1.position.set(0, 140, 500);
+        light1.position.multiplyScalar(1.1);
+        light1.color.setHSL(0.6, 0.075, 1);
+        scene.add(light1);
+
+        const light2 = new THREE.DirectionalLight(0xffffff, 1);
+        light2.position.set(0, -1, 0);
+        scene.add(light2);
+
+        // Controls (line 134-137)
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 3000, 0);
+        controls.update();
+
+        // Create simplified character matching anatomy_final structure
+        // Config values: x:0, y:-500, z:-300, s:30
+        const characterGroup = new THREE.Group();
+        characterGroup.scale.set(30, 30, 30);
+        characterGroup.position.set(0, -500, -300);
+
+        // Create bones
+        const bones = [];
+
+        // Root/Hips
+        const hips = new THREE.Bone();
+        hips.position.y = 0;
+        bones.push(hips);
+
+        // Spine
+        const spine1 = new THREE.Bone();
+        spine1.position.y = 30;
+        hips.add(spine1);
+        bones.push(spine1);
+
+        const spine2 = new THREE.Bone();
+        spine2.position.y = 30;
+        spine1.add(spine2);
+        bones.push(spine2);
+
+        const neck = new THREE.Bone();
+        neck.position.y = 40;
+        spine2.add(neck);
+        bones.push(neck);
+
+        const head = new THREE.Bone();
+        head.position.y = 20;
+        neck.add(head);
+        bones.push(head);
+
+        // Left arm
+        const leftShoulder = new THREE.Bone();
+        leftShoulder.position.set(20, 35, 0);
+        spine2.add(leftShoulder);
+        const leftElbow = new THREE.Bone();
+        leftElbow.position.x = 40;
+        leftShoulder.add(leftElbow);
+        const leftHand = new THREE.Bone();
+        leftHand.position.x = 40;
+        leftElbow.add(leftHand);
+        bones.push(leftShoulder, leftElbow, leftHand);
+
+        // Right arm
+        const rightShoulder = new THREE.Bone();
+        rightShoulder.position.set(-20, 35, 0);
+        spine2.add(rightShoulder);
+        const rightElbow = new THREE.Bone();
+        rightElbow.position.x = -40;
+        rightShoulder.add(rightElbow);
+        const rightHand = new THREE.Bone();
+        rightHand.position.x = -40;
+        rightElbow.add(rightHand);
+        bones.push(rightShoulder, rightElbow, rightHand);
+
+        // Left leg
+        const leftHip = new THREE.Bone();
+        leftHip.position.set(10, -5, 0);
+        hips.add(leftHip);
+        const leftKnee = new THREE.Bone();
+        leftKnee.position.y = -50;
+        leftHip.add(leftKnee);
+        const leftFoot = new THREE.Bone();
+        leftFoot.position.y = -50;
+        leftKnee.add(leftFoot);
+        bones.push(leftHip, leftKnee, leftFoot);
+
+        // Right leg
+        const rightHip = new THREE.Bone();
+        rightHip.position.set(-10, -5, 0);
+        hips.add(rightHip);
+        const rightKnee = new THREE.Bone();
+        rightKnee.position.y = -50;
+        rightHip.add(rightKnee);
+        const rightFoot = new THREE.Bone();
+        rightFoot.position.y = -50;
+        rightKnee.add(rightFoot);
+        bones.push(rightHip, rightKnee, rightFoot);
+
+        // Create skeleton
+        const skeleton = new THREE.Skeleton(bones);
+
+        // Create body geometry
+        const geometry = new THREE.CylinderGeometry(25, 15, 200, 16, 20);
+        const position = geometry.attributes.position;
+
+        const skinIndices = [];
+        const skinWeights = [];
+
+        for (let i = 0; i < position.count; i++) {
+            const y = position.getY(i);
+
+            let boneIndex1 = 0, boneIndex2 = 1;
+            let weight1 = 1.0, weight2 = 0.0;
+
+            if (y < -80) {
+                boneIndex1 = 0; weight1 = 1.0;
+            } else if (y < -30) {
+                boneIndex1 = 0; boneIndex2 = 1;
+                const t = (y + 80) / 50;
+                weight1 = 1 - t; weight2 = t;
+            } else if (y < 30) {
+                boneIndex1 = 1; boneIndex2 = 2;
+                const t = (y + 30) / 60;
+                weight1 = 1 - t; weight2 = t;
+            } else if (y < 70) {
+                boneIndex1 = 2; boneIndex2 = 3;
+                const t = (y - 30) / 40;
+                weight1 = 1 - t; weight2 = t;
+            } else {
+                boneIndex1 = 3; boneIndex2 = 4;
+                const t = (y - 70) / 50;
+                weight1 = 1 - t; weight2 = t;
+            }
+
+            skinIndices.push(boneIndex1, boneIndex2, 0, 0);
+            skinWeights.push(weight1, weight2, 0, 0);
+        }
+
+        geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
+        geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
+
+        // Material (like anatomy_final UCSCharacter.js line 132-139)
+        const material = new THREE.MeshLambertMaterial({
+            color: 0xeeeeee,
+            emissive: 0x222222
+        });
+
+        // Create SkinnedMesh
+        const mesh = new THREE.SkinnedMesh(geometry, material);
+        mesh.add(hips);
+        mesh.bind(skeleton);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        characterGroup.add(mesh);
+        scene.add(characterGroup);
+
+        // Skeleton helper
+        const helper = new THREE.SkeletonHelper(characterGroup);
+        scene.add(helper);
+
+        console.log('Character created at:', characterGroup.position);
+        console.log('Character scale:', characterGroup.scale);
+        console.log('Camera position:', camera.position);
+        console.log('Bones:', bones.length);
+
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+
+            // Animate
+            neck.rotation.x = Math.sin(time * 0.5) * 0.1;
+            leftElbow.rotation.z = Math.sin(time * 1.5) * 0.3;
+            rightElbow.rotation.z = Math.sin(time * 1.5 + Math.PI) * 0.3;
+
+            characterGroup.updateMatrixWorld(true);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+        console.log('Scene initialized - you should see the character!');
+    </script>
+</body>
+</html>

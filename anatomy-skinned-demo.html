@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Body Anatomy - SkinnedMesh Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #141920;
+            color: #e0e0e0;
+            font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        #canvas-container { width: 100vw; height: 100vh; }
+        canvas { display: block; }
+
+        #info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+        }
+        #info h1 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        #info p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 15px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px 25px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 15px;
+        }
+        .controls button {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .controls button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .controls button.active {
+            background: rgba(33, 150, 243, 0.5);
+            border-color: rgba(33, 150, 243, 0.8);
+        }
+
+        .stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-family: monospace;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="info">
+        <h1>Human Body Anatomy</h1>
+        <p id="description">
+            Interactive 3D SkinnedMesh demonstration inspired by the anatomy_final repository.
+            Uses skeletal animation with bone hierarchy and skin weights.
+        </p>
+    </div>
+
+    <div class="controls">
+        <button id="btn-skeleton" class="active">Skeleton</button>
+        <button id="btn-muscles">Muscles</button>
+        <button id="btn-nervous">Nervous</button>
+        <button id="btn-circulatory">Circulatory</button>
+        <button id="btn-wireframe">Toggle Wireframe</button>
+    </div>
+
+    <div class="stats">
+        <div>Bones: <span id="stat-bones">0</span></div>
+        <div>Vertices: <span id="stat-verts">0</span></div>
+        <div>System: <span id="stat-system">Skeleton</span></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // System descriptions from the anatomy_final repo
+        const systemDescriptions = {
+            skeleton: 'The human skeleton is the internal framework of the body. It is composed of 206 bones in adults. The skeleton provides structure, protects organs, and works with muscles to enable movement.',
+            muscles: 'The muscular system is an organ system consisting of skeletal, smooth and cardiac muscles. It permits movement of the body, maintains posture, and circulates blood throughout the body.',
+            nervous: 'The nervous system coordinates voluntary and involuntary actions and transmits signals between different parts of the body. It consists of the central nervous system (CNS) and peripheral nervous system (PNS).',
+            circulatory: 'The circulatory system, also called the cardiovascular system, permits blood to circulate and transport nutrients, oxygen, carbon dioxide, hormones, and blood cells throughout the body.'
+        };
+
+        // Setup scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x141920);
+        scene.fog = new THREE.FogExp2(0x141920, 0.01);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.set(0, 0, 500);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.update();
+
+        // Lighting (similar to anatomy_final)
+        const light1 = new THREE.DirectionalLight(0xffffff, 1);
+        light1.position.set(0, 140, 500);
+        light1.color.setHSL(0.6, 0.075, 1);
+        scene.add(light1);
+
+        const light2 = new THREE.DirectionalLight(0xffffff, 0.6);
+        light2.position.set(0, -100, 0);
+        scene.add(light2);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        scene.add(ambientLight);
+
+        // Create UCS Character-like skeleton (simplified)
+        function createHumanSkeleton() {
+            const bones = [];
+
+            // Root (Hips)
+            const hips = new THREE.Bone();
+            hips.name = "Hips";
+            hips.position.set(0, 0, 0);
+            bones.push(hips);
+
+            // Spine chain
+            const spine1 = new THREE.Bone();
+            spine1.name = "Spine1";
+            spine1.position.y = 30;
+            hips.add(spine1);
+            bones.push(spine1);
+
+            const spine2 = new THREE.Bone();
+            spine2.name = "Spine2";
+            spine2.position.y = 30;
+            spine1.add(spine2);
+            bones.push(spine2);
+
+            const neck = new THREE.Bone();
+            neck.name = "Neck";
+            neck.position.y = 40;
+            spine2.add(neck);
+            bones.push(neck);
+
+            const head = new THREE.Bone();
+            head.name = "Head";
+            head.position.y = 20;
+            neck.add(head);
+            bones.push(head);
+
+            // Left arm
+            const leftShoulder = new THREE.Bone();
+            leftShoulder.name = "LeftShoulder";
+            leftShoulder.position.set(20, 35, 0);
+            spine2.add(leftShoulder);
+            const leftElbow = new THREE.Bone();
+            leftElbow.name = "LeftElbow";
+            leftElbow.position.x = 40;
+            leftShoulder.add(leftElbow);
+            const leftHand = new THREE.Bone();
+            leftHand.name = "LeftHand";
+            leftHand.position.x = 40;
+            leftElbow.add(leftHand);
+            bones.push(leftShoulder, leftElbow, leftHand);
+
+            // Right arm
+            const rightShoulder = new THREE.Bone();
+            rightShoulder.name = "RightShoulder";
+            rightShoulder.position.set(-20, 35, 0);
+            spine2.add(rightShoulder);
+            const rightElbow = new THREE.Bone();
+            rightElbow.name = "RightElbow";
+            rightElbow.position.x = -40;
+            rightShoulder.add(rightElbow);
+            const rightHand = new THREE.Bone();
+            rightHand.name = "RightHand";
+            rightHand.position.x = -40;
+            rightElbow.add(rightHand);
+            bones.push(rightShoulder, rightElbow, rightHand);
+
+            // Left leg
+            const leftHip = new THREE.Bone();
+            leftHip.name = "LeftHip";
+            leftHip.position.set(10, -5, 0);
+            hips.add(leftHip);
+            const leftKnee = new THREE.Bone();
+            leftKnee.name = "LeftKnee";
+            leftKnee.position.y = -50;
+            leftHip.add(leftKnee);
+            const leftFoot = new THREE.Bone();
+            leftFoot.name = "LeftFoot";
+            leftFoot.position.y = -50;
+            leftKnee.add(leftFoot);
+            bones.push(leftHip, leftKnee, leftFoot);
+
+            // Right leg
+            const rightHip = new THREE.Bone();
+            rightHip.name = "RightHip";
+            rightHip.position.set(-10, -5, 0);
+            hips.add(rightHip);
+            const rightKnee = new THREE.Bone();
+            rightKnee.name = "RightKnee";
+            rightKnee.position.y = -50;
+            rightHip.add(rightKnee);
+            const rightFoot = new THREE.Bone();
+            rightFoot.name = "RightFoot";
+            rightFoot.position.y = -50;
+            rightKnee.add(rightFoot);
+            bones.push(rightHip, rightKnee, rightFoot);
+
+            return {
+                bones,
+                hips,
+                neck,
+                leftElbow,
+                rightElbow,
+                leftKnee,
+                rightKnee
+            };
+        }
+
+        // Create skinned body geometry
+        function createBodyGeometry(skeleton) {
+            const geometry = new THREE.CylinderGeometry(25, 15, 200, 16, 20);
+            const position = geometry.attributes.position;
+
+            const skinIndices = [];
+            const skinWeights = [];
+
+            // Assign skin weights based on Y position
+            for (let i = 0; i < position.count; i++) {
+                const y = position.getY(i);
+
+                let boneIndex1 = 0, boneIndex2 = 1;
+                let weight1 = 1.0, weight2 = 0.0;
+
+                // Bottom (legs)
+                if (y < -80) {
+                    boneIndex1 = 0; weight1 = 1.0; // Hips
+                }
+                // Lower torso
+                else if (y < -30) {
+                    boneIndex1 = 0; boneIndex2 = 1;
+                    const t = (y + 80) / 50;
+                    weight1 = 1 - t; weight2 = t;
+                }
+                // Mid torso
+                else if (y < 30) {
+                    boneIndex1 = 1; boneIndex2 = 2;
+                    const t = (y + 30) / 60;
+                    weight1 = 1 - t; weight2 = t;
+                }
+                // Upper torso
+                else if (y < 70) {
+                    boneIndex1 = 2; boneIndex2 = 3;
+                    const t = (y - 30) / 40;
+                    weight1 = 1 - t; weight2 = t;
+                }
+                // Neck/head
+                else {
+                    boneIndex1 = 3; boneIndex2 = 4;
+                    const t = (y - 70) / 50;
+                    weight1 = 1 - t; weight2 = t;
+                }
+
+                skinIndices.push(boneIndex1, boneIndex2, 0, 0);
+                skinWeights.push(weight1, weight2, 0, 0);
+            }
+
+            geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
+            geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
+
+            return geometry;
+        }
+
+        // Build character
+        const { bones, hips, neck, leftElbow, rightElbow, leftKnee, rightKnee } = createHumanSkeleton();
+        const skeleton = new THREE.Skeleton(bones);
+
+        const geometry = createBodyGeometry(skeleton);
+
+        // Materials (like anatomy_final's different skins)
+        // Note: In Three.js r0.162.0+, skinning is automatically enabled for SkinnedMesh
+        const materials = {
+            skeleton: new THREE.MeshLambertMaterial({
+                color: 0xe0d8c8,
+                wireframe: false
+            }),
+            muscles: new THREE.MeshLambertMaterial({
+                color: 0xb04040,
+                wireframe: false
+            }),
+            nervous: new THREE.MeshLambertMaterial({
+                color: 0xe8a0b0,
+                wireframe: false
+            }),
+            circulatory: new THREE.MeshLambertMaterial({
+                color: 0xc0283c,
+                wireframe: false
+            })
+        };
+
+        const mesh = new THREE.SkinnedMesh(geometry, materials.skeleton);
+        mesh.add(hips);
+        mesh.bind(skeleton);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.position.set(0, 0, 0); // Center it
+        scene.add(mesh);
+
+        console.log('Mesh position:', mesh.position);
+        console.log('Mesh visible:', mesh.visible);
+        console.log('Geometry bounds:', geometry.boundingBox);
+
+        // Skeleton helper (make it VERY visible)
+        const helper = new THREE.SkeletonHelper(mesh);
+        helper.material.linewidth = 5;
+        helper.material.color.set(0xff0000); // Bright red
+        scene.add(helper);
+
+        // Add a test cube to verify camera/scene is working
+        const testCube = new THREE.Mesh(
+            new THREE.BoxGeometry(50, 50, 50),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true })
+        );
+        testCube.position.set(150, 0, 0);
+        scene.add(testCube);
+
+        console.log('Test cube added at:', testCube.position);
+        console.log('Camera position:', camera.position);
+        console.log('Camera looking at:', controls.target);
+
+        // Update stats
+        document.getElementById('stat-bones').textContent = bones.length;
+        document.getElementById('stat-verts').textContent = geometry.attributes.position.count;
+
+        // UI Controls
+        let currentSystem = 'skeleton';
+        let wireframeMode = false;
+
+        function switchSystem(system) {
+            currentSystem = system;
+            mesh.material = materials[system];
+            mesh.material.wireframe = wireframeMode;
+            document.getElementById('description').textContent = systemDescriptions[system];
+            document.getElementById('stat-system').textContent = system.charAt(0).toUpperCase() + system.slice(1);
+
+            // Update button states
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`btn-${system}`).classList.add('active');
+        }
+
+        document.getElementById('btn-skeleton').addEventListener('click', () => switchSystem('skeleton'));
+        document.getElementById('btn-muscles').addEventListener('click', () => switchSystem('muscles'));
+        document.getElementById('btn-nervous').addEventListener('click', () => switchSystem('nervous'));
+        document.getElementById('btn-circulatory').addEventListener('click', () => switchSystem('circulatory'));
+
+        document.getElementById('btn-wireframe').addEventListener('click', () => {
+            wireframeMode = !wireframeMode;
+            mesh.material.wireframe = wireframeMode;
+        });
+
+        // Animation (like anatomy_final's THREE.AnimationHandler)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+
+            // Breathing
+            neck.rotation.x = Math.sin(time * 0.5) * 0.1;
+
+            // Arms swinging
+            leftElbow.rotation.z = Math.sin(time * 1.5) * 0.3;
+            rightElbow.rotation.z = Math.sin(time * 1.5 + Math.PI) * 0.3;
+
+            // Legs walking
+            leftKnee.rotation.x = Math.sin(time * 2) * 0.2;
+            rightKnee.rotation.x = Math.sin(time * 2 + Math.PI) * 0.2;
+
+            mesh.updateMatrixWorld(true);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+        console.log('Human Anatomy SkinnedMesh loaded');
+        console.log('Based on: https://github.com/aditya27marri/anatomy_final.git');
+        console.log('Skeleton:', skeleton);
+    </script>
+</body>
+</html>

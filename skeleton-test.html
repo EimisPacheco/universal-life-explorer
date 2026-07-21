@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skeleton Class Test</title>
+    <style>
+        body {
+            margin: 0;
+            background: #141920;
+            color: #e0e0e0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 80vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        #info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info">
+        <h3>Three.js Skeleton Test</h3>
+        <p>This demonstrates the Three.js Skeleton class with a simple arm skeleton.</p>
+        <p id="status">Loading...</p>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // The Skeleton class code you provided is already part of Three.js
+        // So we can use it directly via: new THREE.Skeleton()
+
+        // Setup scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x141920);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 2, 8);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight * 0.8);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        // Lighting (brighter)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(5, 10, 5);
+        scene.add(directionalLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        fillLight.position.set(-5, 5, -5);
+        scene.add(fillLight);
+
+        // 1. Setup the Skeleton Hierarchy
+        const bones = [];
+        const root = new THREE.Bone(); // Hips
+        root.name = "Hips";
+        const spine = new THREE.Bone(); // Upper Body
+        spine.name = "Spine";
+        spine.position.y = 1;
+        root.add(spine);
+
+        bones.push(root, spine);
+        const skeleton = new THREE.Skeleton(bones);
+
+        // 2. Create Geometry with Skinning Attributes
+        const height = 2;
+        const segmentHeight = 1;
+        const geometry = new THREE.CylinderGeometry(0.5, 0.5, height, 8, 4);
+
+        const position = geometry.attributes.position;
+        const skinIndices = [];
+        const skinWeights = [];
+
+        for (let i = 0; i < position.count; i++) {
+            const y = position.getY(i) + height / 2; // Normalize Y to 0-2 range
+
+            // If vertex is in lower half, link to Hip (Index 0)
+            // If vertex is in upper half, link to Spine (Index 1)
+            if (y <= segmentHeight) {
+                skinIndices.push(0, 0, 0, 0);
+                skinWeights.push(1, 0, 0, 0);
+            } else {
+                skinIndices.push(1, 0, 0, 0);
+                skinWeights.push(1, 0, 0, 0);
+            }
+        }
+
+        geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
+        geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
+
+        // 3. Create the SkinnedMesh
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x156289,
+            wireframe: true,
+            side: THREE.DoubleSide
+        });
+        const mesh = new THREE.SkinnedMesh(geometry, material);
+
+        // 4. Bind Skeleton to Mesh
+        mesh.add(root); // Add the root bone to the mesh
+        mesh.bind(skeleton);
+        scene.add(mesh);
+
+        // 5. Visual Helper (skeleton lines)
+        const helper = new THREE.SkeletonHelper(mesh);
+        helper.material.linewidth = 3;
+        scene.add(helper);
+
+        // Update status
+        document.getElementById('status').innerHTML = `
+            SkinnedMesh created!<br>
+            - Bones: ${skeleton.bones.length} (Hips + Spine)<br>
+            - Vertices: ${position.count}<br>
+            - Type: CylinderGeometry with skin weights<br>
+            - Watch the mesh deform as the spine rotates!
+        `;
+
+        // --- ANIMATION EXAMPLE ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Make the skeleton "look down" by rotating the spine
+            const time = Date.now() * 0.002;
+            mesh.skeleton.bones[1].rotation.x = Math.sin(time) * 0.5;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight * 0.8);
+        });
+
+        animate();
+
+        console.log('Skeleton object:', armSkeleton);
+        console.log('Skeleton methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(armSkeleton)));
+    </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "status": "definitive-reference-arm-v1",
+  "generator": "expert-frontal-silhouette-fit",
+  "reference": "image-42243518-f043-47b0-908b-36e5fe4df01b.png",
+  "updatedAt": "2026-07-19T08:10:00.000Z",
+  "stations": [
+    "proximal shoulder",
+    "deltoid maximum",
+    "mid upper arm",
+    "elbow",
+    "forearm belly",
+    "wrist",
+    "hand transition"
+  ],
+  "radiusProfile": [
+    0.305,
+    0.355,
+    0.285,
+    0.205,
+    0.235,
+    0.13,
+    0.145
+  ],
+  "centerlineOffsets": [
+    0.0,
+    -0.01,
+    -0.025,
+    -0.045,
+    -0.035,
+    -0.015,
+    0.0
+  ],
+  "notes": [
+    "Rounded deltoid without a spherical shoulder bubble",
+    "Upper arm tapers continuously toward the elbow",
+    "Forearm regains volume proximally and narrows sharply at the wrist",
+    "Subtle medial elbow drift creates the natural frontal S-curve",
+    "Applied symmetrically to both arms"
+  ]
+}

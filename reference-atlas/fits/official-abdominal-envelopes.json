@@ -1,0 +1,1108 @@
+{
+  "schema_version": "1.0.0",
+  "method": {
+    "interior_section_count": 41,
+    "section_distribution": "cosine-spaced horizontal planes",
+    "interpolation": "Fritsch-Carlson shape-preserving cubic (PCHIP)",
+    "runtime_cross_section": "ellipse through four measured cardinal extrema",
+    "render_subdivisions_used_for_validation": 5,
+    "radial_segments_used_for_validation": 48,
+    "validation_resolution_px": 384
+  },
+  "organs": {
+    "liver_hra_female": {
+      "source": {
+        "atlas": "HuBMAP Human Reference Atlas",
+        "release_model": "female liver v1.1",
+        "exact_mesh_name": "VH_F_capsule_of_the_liver",
+        "path": "reference-atlas/models/hra/liver-female-v1.1.glb",
+        "sha256": "ad9b0be0ff253e7bfe31bfffc00017dafce226d4f3e7804a81cbb4c2e269d598",
+        "units": "meter",
+        "license": "CC BY 4.0",
+        "role": "registered female anatomical measurement source"
+      },
+      "source_bounds_fit_frame": {
+        "min": [
+          -0.1348873,
+          0.262587,
+          -0.1400982
+        ],
+        "max": [
+          0.1122202,
+          0.4324977,
+          0.0124341
+        ],
+        "dimensions": [
+          0.2471075,
+          0.1699107,
+          0.1525323
+        ]
+      },
+      "fit_frame": {
+        "x": "+X anatomical left",
+        "y": "+Y superior",
+        "z": "+Z anterior",
+        "normalization": "independent min-max normalization per fit-frame axis"
+      },
+      "coefficient_model": {
+        "type": "PCHIP-interpolated asymmetric elliptical rings",
+        "cap_rule": "single vertex at each exact vertical source bound",
+        "section_count_including_caps": 43,
+        "sections": [
+          {
+            "vertical_fraction": 0.0,
+            "center_x_fraction": 0.1069229,
+            "center_depth_fraction": 0.3986762,
+            "half_width_fraction": 0.0,
+            "half_depth_fraction": 0.0,
+            "left_x_fraction": 0.1069229,
+            "right_x_fraction": 0.1069229,
+            "anterior_fraction": 0.3986762,
+            "posterior_fraction": 0.3986762
+          },
+          {
+            "vertical_fraction": 0.0013981,
+            "center_x_fraction": 0.1069229,
+            "center_depth_fraction": 0.3986762,
+            "half_width_fraction": 0.0111377,
+            "half_depth_fraction": 0.0404819,
+            "left_x_fraction": 0.1180606,
+            "right_x_fraction": 0.0957852,
+            "anterior_fraction": 0.4391581,
+            "posterior_fraction": 0.3581943
+          },
+          {
+            "vertical_fraction": 0.0055846,
+            "center_x_fraction": 0.1090792,
+            "center_depth_fraction": 0.4155125,
+            "half_width_fraction": 0.023275,
+            "half_depth_fraction": 0.0923476,
+            "left_x_fraction": 0.1323542,
+            "right_x_fraction": 0.0858042,
+            "anterior_fraction": 0.50786,
+            "posterior_fraction": 0.3231649
+          },
+          {
+            "vertical_fraction": 0.012536,
+            "center_x_fraction": 0.344662,
+            "center_depth_fraction": 0.63563,
+            "half_width_fraction": 0.2675419,
+            "half_depth_fraction": 0.3404003,
+            "left_x_fraction": 0.6122039,
+            "right_x_fraction": 0.0771202,
+            "anterior_fraction": 0.9760304,
+            "posterior_fraction": 0.2952297
+          },
+          {
+            "vertical_fraction": 0.0222136,
+            "center_x_fraction": 0.3524185,
+            "center_depth_fraction": 0.6238057,
+            "half_width_fraction": 0.2831412,
+            "half_depth_fraction": 0.3609998,
+            "left_x_fraction": 0.6355596,
+            "right_x_fraction": 0.0692773,
+            "anterior_fraction": 0.9848054,
+            "posterior_fraction": 0.2628059
+          },
+          {
+            "vertical_fraction": 0.0345631,
+            "center_x_fraction": 0.3599443,
+            "center_depth_fraction": 0.6102225,
+            "half_width_fraction": 0.2970471,
+            "half_depth_fraction": 0.3804793,
+            "left_x_fraction": 0.6569914,
+            "right_x_fraction": 0.0628972,
+            "anterior_fraction": 0.9907018,
+            "posterior_fraction": 0.2297432
+          },
+          {
+            "vertical_fraction": 0.0495156,
+            "center_x_fraction": 0.3669374,
+            "center_depth_fraction": 0.5941419,
+            "half_width_fraction": 0.3103048,
+            "half_depth_fraction": 0.4004366,
+            "left_x_fraction": 0.6772422,
+            "right_x_fraction": 0.0566326,
+            "anterior_fraction": 0.9945785,
+            "posterior_fraction": 0.1937054
+          },
+          {
+            "vertical_fraction": 0.0669873,
+            "center_x_fraction": 0.3717643,
+            "center_depth_fraction": 0.5801426,
+            "half_width_fraction": 0.3207021,
+            "half_depth_fraction": 0.417603,
+            "left_x_fraction": 0.6924664,
+            "right_x_fraction": 0.0510622,
+            "anterior_fraction": 0.9977457,
+            "posterior_fraction": 0.1625396
+          },
+          {
+            "vertical_fraction": 0.0868806,
+            "center_x_fraction": 0.3759591,
+            "center_depth_fraction": 0.566341,
+            "half_width_fraction": 0.3303027,
+            "half_depth_fraction": 0.4331872,
+            "left_x_fraction": 0.7062618,
+            "right_x_fraction": 0.0456564,
+            "anterior_fraction": 0.9995282,
+            "posterior_fraction": 0.1331538
+          },
+          {
+            "vertical_fraction": 0.1090843,
+            "center_x_fraction": 0.3813782,
+            "center_depth_fraction": 0.552111,
+            "half_width_fraction": 0.3410703,
+            "half_depth_fraction": 0.4477863,
+            "left_x_fraction": 0.7224484,
+            "right_x_fraction": 0.0403079,
+            "anterior_fraction": 0.9998973,
+            "posterior_fraction": 0.1043247
+          },
+          {
+            "vertical_fraction": 0.1334741,
+            "center_x_fraction": 0.3936531,
+            "center_depth_fraction": 0.5384206,
+            "half_width_fraction": 0.358978,
+            "half_depth_fraction": 0.4599436,
+            "left_x_fraction": 0.7526311,
+            "right_x_fraction": 0.034675,
+            "anterior_fraction": 0.9983642,
+            "posterior_fraction": 0.078477
+          },
+          {
+            "vertical_fraction": 0.1599136,
+            "center_x_fraction": 0.4135023,
+            "center_depth_fraction": 0.5262692,
+            "half_width_fraction": 0.3846424,
+            "half_depth_fraction": 0.4693708,
+            "left_x_fraction": 0.7981447,
+            "right_x_fraction": 0.02886,
+            "anterior_fraction": 0.99564,
+            "posterior_fraction": 0.0568984
+          },
+          {
+            "vertical_fraction": 0.1882551,
+            "center_x_fraction": 0.4232868,
+            "center_depth_fraction": 0.5150354,
+            "half_width_fraction": 0.4003499,
+            "half_depth_fraction": 0.477056,
+            "left_x_fraction": 0.8236368,
+            "right_x_fraction": 0.0229369,
+            "anterior_fraction": 0.9920914,
+            "posterior_fraction": 0.0379794
+          },
+          {
+            "vertical_fraction": 0.21834,
+            "center_x_fraction": 0.4303234,
+            "center_depth_fraction": 0.5043174,
+            "half_width_fraction": 0.4132892,
+            "half_depth_fraction": 0.4836671,
+            "left_x_fraction": 0.8436126,
+            "right_x_fraction": 0.0170342,
+            "anterior_fraction": 0.9879845,
+            "posterior_fraction": 0.0206504
+          },
+          {
+            "vertical_fraction": 0.25,
+            "center_x_fraction": 0.4360654,
+            "center_depth_fraction": 0.4929837,
+            "half_width_fraction": 0.424622,
+            "half_depth_fraction": 0.4904539,
+            "left_x_fraction": 0.8606874,
+            "right_x_fraction": 0.0114434,
+            "anterior_fraction": 0.9834376,
+            "posterior_fraction": 0.0025298
+          },
+          {
+            "vertical_fraction": 0.2830581,
+            "center_x_fraction": 0.4419331,
+            "center_depth_fraction": 0.5188716,
+            "half_width_fraction": 0.4352144,
+            "half_depth_fraction": 0.4593058,
+            "left_x_fraction": 0.8771474,
+            "right_x_fraction": 0.0067187,
+            "anterior_fraction": 0.9781774,
+            "posterior_fraction": 0.0595658
+          },
+          {
+            "vertical_fraction": 0.3173295,
+            "center_x_fraction": 0.4485344,
+            "center_depth_fraction": 0.5223478,
+            "half_width_fraction": 0.4453699,
+            "half_depth_fraction": 0.4493976,
+            "left_x_fraction": 0.8939043,
+            "right_x_fraction": 0.0031645,
+            "anterior_fraction": 0.9717454,
+            "posterior_fraction": 0.0729503
+          },
+          {
+            "vertical_fraction": 0.3526224,
+            "center_x_fraction": 0.4558143,
+            "center_depth_fraction": 0.5217509,
+            "half_width_fraction": 0.4549502,
+            "half_depth_fraction": 0.4422832,
+            "left_x_fraction": 0.9107644,
+            "right_x_fraction": 0.0008641,
+            "anterior_fraction": 0.9640341,
+            "posterior_fraction": 0.0794677
+          },
+          {
+            "vertical_fraction": 0.3887395,
+            "center_x_fraction": 0.4660447,
+            "center_depth_fraction": 0.5162043,
+            "half_width_fraction": 0.4659792,
+            "half_depth_fraction": 0.4390715,
+            "left_x_fraction": 0.9320239,
+            "right_x_fraction": 6.55e-05,
+            "anterior_fraction": 0.9552758,
+            "posterior_fraction": 0.0771328
+          },
+          {
+            "vertical_fraction": 0.4254789,
+            "center_x_fraction": 0.478034,
+            "center_depth_fraction": 0.5083069,
+            "half_width_fraction": 0.47697,
+            "half_depth_fraction": 0.436522,
+            "left_x_fraction": 0.955004,
+            "right_x_fraction": 0.001064,
+            "anterior_fraction": 0.944829,
+            "posterior_fraction": 0.0717849
+          },
+          {
+            "vertical_fraction": 0.462635,
+            "center_x_fraction": 0.4892791,
+            "center_depth_fraction": 0.4979575,
+            "half_width_fraction": 0.4865511,
+            "half_depth_fraction": 0.4343716,
+            "left_x_fraction": 0.9758302,
+            "right_x_fraction": 0.0027279,
+            "anterior_fraction": 0.9323292,
+            "posterior_fraction": 0.0635859
+          },
+          {
+            "vertical_fraction": 0.5,
+            "center_x_fraction": 0.4977962,
+            "center_depth_fraction": 0.4846522,
+            "half_width_fraction": 0.4927373,
+            "half_depth_fraction": 0.431426,
+            "left_x_fraction": 0.9905335,
+            "right_x_fraction": 0.0050589,
+            "anterior_fraction": 0.9160782,
+            "posterior_fraction": 0.0532261
+          },
+          {
+            "vertical_fraction": 0.537365,
+            "center_x_fraction": 0.5028251,
+            "center_depth_fraction": 0.4704755,
+            "half_width_fraction": 0.4954465,
+            "half_depth_fraction": 0.4283482,
+            "left_x_fraction": 0.9982716,
+            "right_x_fraction": 0.0073785,
+            "anterior_fraction": 0.8988237,
+            "posterior_fraction": 0.0421273
+          },
+          {
+            "vertical_fraction": 0.5745211,
+            "center_x_fraction": 0.5051234,
+            "center_depth_fraction": 0.4567772,
+            "half_width_fraction": 0.4948245,
+            "half_depth_fraction": 0.4242701,
+            "left_x_fraction": 0.9999478,
+            "right_x_fraction": 0.0102989,
+            "anterior_fraction": 0.8810473,
+            "posterior_fraction": 0.0325071
+          },
+          {
+            "vertical_fraction": 0.6112605,
+            "center_x_fraction": 0.5055602,
+            "center_depth_fraction": 0.4446016,
+            "half_width_fraction": 0.4910648,
+            "half_depth_fraction": 0.4185061,
+            "left_x_fraction": 0.996625,
+            "right_x_fraction": 0.0144954,
+            "anterior_fraction": 0.8631077,
+            "posterior_fraction": 0.0260955
+          },
+          {
+            "vertical_fraction": 0.6473776,
+            "center_x_fraction": 0.5051071,
+            "center_depth_fraction": 0.4338859,
+            "half_width_fraction": 0.4852427,
+            "half_depth_fraction": 0.4103308,
+            "left_x_fraction": 0.9903497,
+            "right_x_fraction": 0.0198644,
+            "anterior_fraction": 0.8442166,
+            "posterior_fraction": 0.0235551
+          },
+          {
+            "vertical_fraction": 0.6826705,
+            "center_x_fraction": 0.5029128,
+            "center_depth_fraction": 0.4242711,
+            "half_width_fraction": 0.4768241,
+            "half_depth_fraction": 0.3991256,
+            "left_x_fraction": 0.9797369,
+            "right_x_fraction": 0.0260886,
+            "anterior_fraction": 0.8233966,
+            "posterior_fraction": 0.0251455
+          },
+          {
+            "vertical_fraction": 0.7169419,
+            "center_x_fraction": 0.4987625,
+            "center_depth_fraction": 0.4145535,
+            "half_width_fraction": 0.4655314,
+            "half_depth_fraction": 0.3836635,
+            "left_x_fraction": 0.964294,
+            "right_x_fraction": 0.0332311,
+            "anterior_fraction": 0.7982171,
+            "posterior_fraction": 0.03089
+          },
+          {
+            "vertical_fraction": 0.75,
+            "center_x_fraction": 0.4914833,
+            "center_depth_fraction": 0.408244,
+            "half_width_fraction": 0.4502133,
+            "half_depth_fraction": 0.366897,
+            "left_x_fraction": 0.9416965,
+            "right_x_fraction": 0.04127,
+            "anterior_fraction": 0.775141,
+            "posterior_fraction": 0.041347
+          },
+          {
+            "vertical_fraction": 0.78166,
+            "center_x_fraction": 0.4773193,
+            "center_depth_fraction": 0.4097405,
+            "half_width_fraction": 0.4268715,
+            "half_depth_fraction": 0.3526137,
+            "left_x_fraction": 0.9041908,
+            "right_x_fraction": 0.0504478,
+            "anterior_fraction": 0.7623542,
+            "posterior_fraction": 0.0571268
+          },
+          {
+            "vertical_fraction": 0.8117449,
+            "center_x_fraction": 0.3008021,
+            "center_depth_fraction": 0.4148766,
+            "half_width_fraction": 0.2401002,
+            "half_depth_fraction": 0.3352168,
+            "left_x_fraction": 0.5409023,
+            "right_x_fraction": 0.0607018,
+            "anterior_fraction": 0.7500934,
+            "posterior_fraction": 0.0796599
+          },
+          {
+            "vertical_fraction": 0.8400864,
+            "center_x_fraction": 0.2767857,
+            "center_depth_fraction": 0.4246083,
+            "half_width_fraction": 0.2045105,
+            "half_depth_fraction": 0.3145819,
+            "left_x_fraction": 0.4812962,
+            "right_x_fraction": 0.0722752,
+            "anterior_fraction": 0.7391902,
+            "posterior_fraction": 0.1100264
+          },
+          {
+            "vertical_fraction": 0.8665259,
+            "center_x_fraction": 0.268521,
+            "center_depth_fraction": 0.4341162,
+            "half_width_fraction": 0.183769,
+            "half_depth_fraction": 0.2916645,
+            "left_x_fraction": 0.45229,
+            "right_x_fraction": 0.084752,
+            "anterior_fraction": 0.7257807,
+            "posterior_fraction": 0.1424517
+          },
+          {
+            "vertical_fraction": 0.8909157,
+            "center_x_fraction": 0.2635816,
+            "center_depth_fraction": 0.442743,
+            "half_width_fraction": 0.1659767,
+            "half_depth_fraction": 0.2662163,
+            "left_x_fraction": 0.4295583,
+            "right_x_fraction": 0.097605,
+            "anterior_fraction": 0.7089593,
+            "posterior_fraction": 0.1765267
+          },
+          {
+            "vertical_fraction": 0.9131194,
+            "center_x_fraction": 0.2591289,
+            "center_depth_fraction": 0.4507077,
+            "half_width_fraction": 0.1481431,
+            "half_depth_fraction": 0.2392514,
+            "left_x_fraction": 0.407272,
+            "right_x_fraction": 0.1109858,
+            "anterior_fraction": 0.6899591,
+            "posterior_fraction": 0.2114563
+          },
+          {
+            "vertical_fraction": 0.9330127,
+            "center_x_fraction": 0.256587,
+            "center_depth_fraction": 0.4565344,
+            "half_width_fraction": 0.1312004,
+            "half_depth_fraction": 0.2123236,
+            "left_x_fraction": 0.3877874,
+            "right_x_fraction": 0.1253866,
+            "anterior_fraction": 0.668858,
+            "posterior_fraction": 0.2442109
+          },
+          {
+            "vertical_fraction": 0.9504844,
+            "center_x_fraction": 0.2554348,
+            "center_depth_fraction": 0.4614687,
+            "half_width_fraction": 0.1137733,
+            "half_depth_fraction": 0.1837352,
+            "left_x_fraction": 0.3692081,
+            "right_x_fraction": 0.1416614,
+            "anterior_fraction": 0.6452039,
+            "posterior_fraction": 0.2777335
+          },
+          {
+            "vertical_fraction": 0.9654369,
+            "center_x_fraction": 0.2549647,
+            "center_depth_fraction": 0.467931,
+            "half_width_fraction": 0.0955967,
+            "half_depth_fraction": 0.1512055,
+            "left_x_fraction": 0.3505615,
+            "right_x_fraction": 0.159368,
+            "anterior_fraction": 0.6191365,
+            "posterior_fraction": 0.3167255
+          },
+          {
+            "vertical_fraction": 0.9777864,
+            "center_x_fraction": 0.2550869,
+            "center_depth_fraction": 0.4711803,
+            "half_width_fraction": 0.0768277,
+            "half_depth_fraction": 0.1210725,
+            "left_x_fraction": 0.3319146,
+            "right_x_fraction": 0.1782592,
+            "anterior_fraction": 0.5922528,
+            "posterior_fraction": 0.3501078
+          },
+          {
+            "vertical_fraction": 0.987464,
+            "center_x_fraction": 0.2556693,
+            "center_depth_fraction": 0.4729519,
+            "half_width_fraction": 0.057677,
+            "half_depth_fraction": 0.0917531,
+            "left_x_fraction": 0.3133464,
+            "right_x_fraction": 0.1979923,
+            "anterior_fraction": 0.5647049,
+            "posterior_fraction": 0.3811988
+          },
+          {
+            "vertical_fraction": 0.9944154,
+            "center_x_fraction": 0.2563019,
+            "center_depth_fraction": 0.4732135,
+            "half_width_fraction": 0.0385656,
+            "half_depth_fraction": 0.0611777,
+            "left_x_fraction": 0.2948675,
+            "right_x_fraction": 0.2177363,
+            "anterior_fraction": 0.5343912,
+            "posterior_fraction": 0.4120357
+          },
+          {
+            "vertical_fraction": 0.9986019,
+            "center_x_fraction": 0.2563958,
+            "center_depth_fraction": 0.4737959,
+            "half_width_fraction": 0.0186142,
+            "half_depth_fraction": 0.030711,
+            "left_x_fraction": 0.27501,
+            "right_x_fraction": 0.2377816,
+            "anterior_fraction": 0.5045069,
+            "posterior_fraction": 0.4430849
+          },
+          {
+            "vertical_fraction": 1.0,
+            "center_x_fraction": 0.2563958,
+            "center_depth_fraction": 0.4737959,
+            "half_width_fraction": 0.0,
+            "half_depth_fraction": 0.0,
+            "left_x_fraction": 0.2563958,
+            "right_x_fraction": 0.2563958,
+            "anterior_fraction": 0.4737959,
+            "posterior_fraction": 0.4737959
+          }
+        ]
+      },
+      "validation": {
+        "front_xy_silhouette": {
+          "resolution_px": 384,
+          "intersection_over_union": 0.9683253,
+          "mean_edge_error_fraction": 0.0024151,
+          "p95_edge_error_fraction": 0.0026042
+        },
+        "profile_zy_silhouette": {
+          "resolution_px": 384,
+          "intersection_over_union": 0.9887836,
+          "mean_edge_error_fraction": 0.0014947,
+          "p95_edge_error_fraction": 0.0026042
+        },
+        "passes_front_95_percent_iou": true,
+        "passes_profile_95_percent_iou": true
+      }
+    },
+    "stomach_bodyparts3d_morphology": {
+      "source": {
+        "atlas": "BodyParts3D v4.0 PART-OF tree",
+        "representation_id": "BP9480",
+        "fma": "FMA:7148",
+        "path": "reference-atlas/models/bodyparts3d/stomach-bodyparts3d-v4.0-99.obj",
+        "sha256": "cb78c3f2214fd21a16fa6c9f2389b9aa874e9d3ce624c42b34d4563c31554c67",
+        "units": "millimeter before normalization",
+        "license": "CC BY 4.0 current database; preserve embedded legacy notice",
+        "role": "adult-male morphology-only fallback; not registered to HRA female frame"
+      },
+      "source_bounds_fit_frame": {
+        "min": [
+          -28.9516,
+          1039.88,
+          81.4799
+        ],
+        "max": [
+          105.524,
+          1156.89,
+          194.37
+        ],
+        "dimensions": [
+          134.4756,
+          117.01,
+          112.8901
+        ]
+      },
+      "fit_frame": {
+        "x": "+X anatomical left",
+        "y": "+Y superior",
+        "z": "+Z anterior",
+        "normalization": "independent min-max normalization per fit-frame axis"
+      },
+      "coefficient_model": {
+        "type": "PCHIP-interpolated asymmetric elliptical rings",
+        "cap_rule": "single vertex at each exact vertical source bound",
+        "section_count_including_caps": 43,
+        "sections": [
+          {
+            "vertical_fraction": 0.0,
+            "center_x_fraction": 0.3943075,
+            "center_depth_fraction": 0.80097,
+            "half_width_fraction": 0.0,
+            "half_depth_fraction": 0.0,
+            "left_x_fraction": 0.3943075,
+            "right_x_fraction": 0.3943075,
+            "anterior_fraction": 0.80097,
+            "posterior_fraction": 0.80097
+          },
+          {
+            "vertical_fraction": 0.0013981,
+            "center_x_fraction": 0.3943075,
+            "center_depth_fraction": 0.80097,
+            "half_width_fraction": 0.01451,
+            "half_depth_fraction": 0.0088814,
+            "left_x_fraction": 0.4088175,
+            "right_x_fraction": 0.3797975,
+            "anterior_fraction": 0.8098514,
+            "posterior_fraction": 0.7920886
+          },
+          {
+            "vertical_fraction": 0.0055846,
+            "center_x_fraction": 0.3834042,
+            "center_depth_fraction": 0.7987282,
+            "half_width_fraction": 0.044654,
+            "half_depth_fraction": 0.0354761,
+            "left_x_fraction": 0.4280582,
+            "right_x_fraction": 0.3387502,
+            "anterior_fraction": 0.8342043,
+            "posterior_fraction": 0.7632521
+          },
+          {
+            "vertical_fraction": 0.012536,
+            "center_x_fraction": 0.3824536,
+            "center_depth_fraction": 0.7969131,
+            "half_width_fraction": 0.0851566,
+            "half_depth_fraction": 0.0579069,
+            "left_x_fraction": 0.4676102,
+            "right_x_fraction": 0.297297,
+            "anterior_fraction": 0.85482,
+            "posterior_fraction": 0.7390062
+          },
+          {
+            "vertical_fraction": 0.0222136,
+            "center_x_fraction": 0.3911984,
+            "center_depth_fraction": 0.7907952,
+            "half_width_fraction": 0.1303818,
+            "half_depth_fraction": 0.0823792,
+            "left_x_fraction": 0.5215802,
+            "right_x_fraction": 0.2608166,
+            "anterior_fraction": 0.8731744,
+            "posterior_fraction": 0.708416
+          },
+          {
+            "vertical_fraction": 0.0345631,
+            "center_x_fraction": 0.3917754,
+            "center_depth_fraction": 0.7898147,
+            "half_width_fraction": 0.1739804,
+            "half_depth_fraction": 0.0995494,
+            "left_x_fraction": 0.5657558,
+            "right_x_fraction": 0.217795,
+            "anterior_fraction": 0.8893641,
+            "posterior_fraction": 0.6902653
+          },
+          {
+            "vertical_fraction": 0.0495156,
+            "center_x_fraction": 0.3959302,
+            "center_depth_fraction": 0.7885659,
+            "half_width_fraction": 0.2135617,
+            "half_depth_fraction": 0.1167403,
+            "left_x_fraction": 0.6094919,
+            "right_x_fraction": 0.1823685,
+            "anterior_fraction": 0.9053061,
+            "posterior_fraction": 0.6718256
+          },
+          {
+            "vertical_fraction": 0.0669873,
+            "center_x_fraction": 0.4052125,
+            "center_depth_fraction": 0.7870816,
+            "half_width_fraction": 0.2553844,
+            "half_depth_fraction": 0.1349283,
+            "left_x_fraction": 0.6605969,
+            "right_x_fraction": 0.149828,
+            "anterior_fraction": 0.9220099,
+            "posterior_fraction": 0.6521533
+          },
+          {
+            "vertical_fraction": 0.0868806,
+            "center_x_fraction": 0.4169527,
+            "center_depth_fraction": 0.7783887,
+            "half_width_fraction": 0.2919863,
+            "half_depth_fraction": 0.1579199,
+            "left_x_fraction": 0.708939,
+            "right_x_fraction": 0.1249664,
+            "anterior_fraction": 0.9363086,
+            "posterior_fraction": 0.6204688
+          },
+          {
+            "vertical_fraction": 0.1090843,
+            "center_x_fraction": 0.4309272,
+            "center_depth_fraction": 0.7645092,
+            "half_width_fraction": 0.3273559,
+            "half_depth_fraction": 0.1837023,
+            "left_x_fraction": 0.7582831,
+            "right_x_fraction": 0.1035712,
+            "anterior_fraction": 0.9482114,
+            "posterior_fraction": 0.5808069
+          },
+          {
+            "vertical_fraction": 0.1334741,
+            "center_x_fraction": 0.4427907,
+            "center_depth_fraction": 0.7444228,
+            "half_width_fraction": 0.3567613,
+            "half_depth_fraction": 0.2166587,
+            "left_x_fraction": 0.7995521,
+            "right_x_fraction": 0.0860294,
+            "anterior_fraction": 0.9610815,
+            "posterior_fraction": 0.5277641
+          },
+          {
+            "vertical_fraction": 0.1599136,
+            "center_x_fraction": 0.4222614,
+            "center_depth_fraction": 0.7222367,
+            "half_width_fraction": 0.4077124,
+            "half_depth_fraction": 0.2519732,
+            "left_x_fraction": 0.8299739,
+            "right_x_fraction": 0.014549,
+            "anterior_fraction": 0.9742099,
+            "posterior_fraction": 0.4702635
+          },
+          {
+            "vertical_fraction": 0.1882551,
+            "center_x_fraction": 0.4304972,
+            "center_depth_fraction": 0.6955786,
+            "half_width_fraction": 0.4274928,
+            "half_depth_fraction": 0.286952,
+            "left_x_fraction": 0.8579901,
+            "right_x_fraction": 0.0030044,
+            "anterior_fraction": 0.9825307,
+            "posterior_fraction": 0.4086266
+          },
+          {
+            "vertical_fraction": 0.21834,
+            "center_x_fraction": 0.4417254,
+            "center_depth_fraction": 0.66752,
+            "half_width_fraction": 0.4402547,
+            "half_depth_fraction": 0.3222473,
+            "left_x_fraction": 0.8819801,
+            "right_x_fraction": 0.0014706,
+            "anterior_fraction": 0.9897673,
+            "posterior_fraction": 0.3452728
+          },
+          {
+            "vertical_fraction": 0.25,
+            "center_x_fraction": 0.4543442,
+            "center_depth_fraction": 0.6404664,
+            "half_width_fraction": 0.4492034,
+            "half_depth_fraction": 0.3534903,
+            "left_x_fraction": 0.9035476,
+            "right_x_fraction": 0.0051408,
+            "anterior_fraction": 0.9939567,
+            "posterior_fraction": 0.2869761
+          },
+          {
+            "vertical_fraction": 0.2830581,
+            "center_x_fraction": 0.4709439,
+            "center_depth_fraction": 0.6155341,
+            "half_width_fraction": 0.4520725,
+            "half_depth_fraction": 0.3827969,
+            "left_x_fraction": 0.9230164,
+            "right_x_fraction": 0.0188714,
+            "anterior_fraction": 0.998331,
+            "posterior_fraction": 0.2327373
+          },
+          {
+            "vertical_fraction": 0.3173295,
+            "center_x_fraction": 0.5394651,
+            "center_depth_fraction": 0.5926939,
+            "half_width_fraction": 0.4026383,
+            "half_depth_fraction": 0.4071269,
+            "left_x_fraction": 0.9421033,
+            "right_x_fraction": 0.1368268,
+            "anterior_fraction": 0.9998208,
+            "posterior_fraction": 0.185567
+          },
+          {
+            "vertical_fraction": 0.3526224,
+            "center_x_fraction": 0.5786998,
+            "center_depth_fraction": 0.5710783,
+            "half_width_fraction": 0.3775805,
+            "half_depth_fraction": 0.4280511,
+            "left_x_fraction": 0.9562803,
+            "right_x_fraction": 0.2011193,
+            "anterior_fraction": 0.9991294,
+            "posterior_fraction": 0.1430273
+          },
+          {
+            "vertical_fraction": 0.3887395,
+            "center_x_fraction": 0.6609527,
+            "center_depth_fraction": 0.5498881,
+            "half_width_fraction": 0.309655,
+            "half_depth_fraction": 0.4430176,
+            "left_x_fraction": 0.9706077,
+            "right_x_fraction": 0.3512977,
+            "anterior_fraction": 0.9929057,
+            "posterior_fraction": 0.1068705
+          },
+          {
+            "vertical_fraction": 0.4254789,
+            "center_x_fraction": 0.6751968,
+            "center_depth_fraction": 0.529528,
+            "half_width_fraction": 0.3066688,
+            "half_depth_fraction": 0.4563993,
+            "left_x_fraction": 0.9818656,
+            "right_x_fraction": 0.368528,
+            "anterior_fraction": 0.9859274,
+            "posterior_fraction": 0.0731287
+          },
+          {
+            "vertical_fraction": 0.462635,
+            "center_x_fraction": 0.6846811,
+            "center_depth_fraction": 0.5094522,
+            "half_width_fraction": 0.305342,
+            "half_depth_fraction": 0.4634001,
+            "left_x_fraction": 0.9900231,
+            "right_x_fraction": 0.379339,
+            "anterior_fraction": 0.9728523,
+            "posterior_fraction": 0.0460521
+          },
+          {
+            "vertical_fraction": 0.5,
+            "center_x_fraction": 0.6936361,
+            "center_depth_fraction": 0.4924674,
+            "half_width_fraction": 0.3034252,
+            "half_depth_fraction": 0.4667316,
+            "left_x_fraction": 0.9970613,
+            "right_x_fraction": 0.3902109,
+            "anterior_fraction": 0.959199,
+            "posterior_fraction": 0.0257358
+          },
+          {
+            "vertical_fraction": 0.537365,
+            "center_x_fraction": 0.6970929,
+            "center_depth_fraction": 0.4757992,
+            "half_width_fraction": 0.3026794,
+            "half_depth_fraction": 0.4640475,
+            "left_x_fraction": 0.9997723,
+            "right_x_fraction": 0.3944136,
+            "anterior_fraction": 0.9398467,
+            "posterior_fraction": 0.0117517
+          },
+          {
+            "vertical_fraction": 0.5745211,
+            "center_x_fraction": 0.6850795,
+            "center_depth_fraction": 0.4622624,
+            "half_width_fraction": 0.3130415,
+            "half_depth_fraction": 0.4579443,
+            "left_x_fraction": 0.998121,
+            "right_x_fraction": 0.3720381,
+            "anterior_fraction": 0.9202067,
+            "posterior_fraction": 0.0043181
+          },
+          {
+            "vertical_fraction": 0.6112605,
+            "center_x_fraction": 0.672128,
+            "center_depth_fraction": 0.4497156,
+            "half_width_fraction": 0.3222144,
+            "half_depth_fraction": 0.4492308,
+            "left_x_fraction": 0.9943424,
+            "right_x_fraction": 0.3499135,
+            "anterior_fraction": 0.8989463,
+            "posterior_fraction": 0.0004848
+          },
+          {
+            "vertical_fraction": 0.6473776,
+            "center_x_fraction": 0.6581012,
+            "center_depth_fraction": 0.4392723,
+            "half_width_fraction": 0.3317212,
+            "half_depth_fraction": 0.4387737,
+            "left_x_fraction": 0.9898224,
+            "right_x_fraction": 0.3263799,
+            "anterior_fraction": 0.878046,
+            "posterior_fraction": 0.0004986
+          },
+          {
+            "vertical_fraction": 0.6826705,
+            "center_x_fraction": 0.6421091,
+            "center_depth_fraction": 0.4303593,
+            "half_width_fraction": 0.3398718,
+            "half_depth_fraction": 0.4269331,
+            "left_x_fraction": 0.9819809,
+            "right_x_fraction": 0.3022374,
+            "anterior_fraction": 0.8572924,
+            "posterior_fraction": 0.0034262
+          },
+          {
+            "vertical_fraction": 0.7169419,
+            "center_x_fraction": 0.6237689,
+            "center_depth_fraction": 0.4222945,
+            "half_width_fraction": 0.3505974,
+            "half_depth_fraction": 0.4123441,
+            "left_x_fraction": 0.9743663,
+            "right_x_fraction": 0.2731716,
+            "anterior_fraction": 0.8346386,
+            "posterior_fraction": 0.0099504
+          },
+          {
+            "vertical_fraction": 0.75,
+            "center_x_fraction": 0.6198514,
+            "center_depth_fraction": 0.4150653,
+            "half_width_fraction": 0.3428787,
+            "half_depth_fraction": 0.3942713,
+            "left_x_fraction": 0.9627301,
+            "right_x_fraction": 0.2769727,
+            "anterior_fraction": 0.8093365,
+            "posterior_fraction": 0.020794
+          },
+          {
+            "vertical_fraction": 0.78166,
+            "center_x_fraction": 0.619626,
+            "center_depth_fraction": 0.408954,
+            "half_width_fraction": 0.3293273,
+            "half_depth_fraction": 0.3739628,
+            "left_x_fraction": 0.9489533,
+            "right_x_fraction": 0.2902987,
+            "anterior_fraction": 0.7829167,
+            "posterior_fraction": 0.0349912
+          },
+          {
+            "vertical_fraction": 0.8117449,
+            "center_x_fraction": 0.6212146,
+            "center_depth_fraction": 0.4025765,
+            "half_width_fraction": 0.3118467,
+            "half_depth_fraction": 0.3523787,
+            "left_x_fraction": 0.9330612,
+            "right_x_fraction": 0.3093679,
+            "anterior_fraction": 0.7549552,
+            "posterior_fraction": 0.0501978
+          },
+          {
+            "vertical_fraction": 0.8400864,
+            "center_x_fraction": 0.6409158,
+            "center_depth_fraction": 0.396228,
+            "half_width_fraction": 0.2753797,
+            "half_depth_fraction": 0.3275479,
+            "left_x_fraction": 0.9162955,
+            "right_x_fraction": 0.3655361,
+            "anterior_fraction": 0.723776,
+            "posterior_fraction": 0.0686801
+          },
+          {
+            "vertical_fraction": 0.8665259,
+            "center_x_fraction": 0.6426298,
+            "center_depth_fraction": 0.3904846,
+            "half_width_fraction": 0.2549481,
+            "half_depth_fraction": 0.3034242,
+            "left_x_fraction": 0.8975779,
+            "right_x_fraction": 0.3876817,
+            "anterior_fraction": 0.6939088,
+            "posterior_fraction": 0.0870604
+          },
+          {
+            "vertical_fraction": 0.8909157,
+            "center_x_fraction": 0.6454087,
+            "center_depth_fraction": 0.3841699,
+            "half_width_fraction": 0.2341327,
+            "half_depth_fraction": 0.2772874,
+            "left_x_fraction": 0.8795414,
+            "right_x_fraction": 0.411276,
+            "anterior_fraction": 0.6614573,
+            "posterior_fraction": 0.1068824
+          },
+          {
+            "vertical_fraction": 0.9131194,
+            "center_x_fraction": 0.6464892,
+            "center_depth_fraction": 0.3759292,
+            "half_width_fraction": 0.2129136,
+            "half_depth_fraction": 0.2510015,
+            "left_x_fraction": 0.8594028,
+            "right_x_fraction": 0.4335756,
+            "anterior_fraction": 0.6269307,
+            "posterior_fraction": 0.1249277
+          },
+          {
+            "vertical_fraction": 0.9330127,
+            "center_x_fraction": 0.6480221,
+            "center_depth_fraction": 0.3694212,
+            "half_width_fraction": 0.1892377,
+            "half_depth_fraction": 0.2230326,
+            "left_x_fraction": 0.8372598,
+            "right_x_fraction": 0.4587845,
+            "anterior_fraction": 0.5924538,
+            "posterior_fraction": 0.1463887
+          },
+          {
+            "vertical_fraction": 0.9504844,
+            "center_x_fraction": 0.6485041,
+            "center_depth_fraction": 0.3613353,
+            "half_width_fraction": 0.1656083,
+            "half_depth_fraction": 0.1948711,
+            "left_x_fraction": 0.8141124,
+            "right_x_fraction": 0.4828959,
+            "anterior_fraction": 0.5562064,
+            "posterior_fraction": 0.1664643
+          },
+          {
+            "vertical_fraction": 0.9654369,
+            "center_x_fraction": 0.6495796,
+            "center_depth_fraction": 0.3543178,
+            "half_width_fraction": 0.1387033,
+            "half_depth_fraction": 0.1625148,
+            "left_x_fraction": 0.7882829,
+            "right_x_fraction": 0.5108763,
+            "anterior_fraction": 0.5168326,
+            "posterior_fraction": 0.191803
+          },
+          {
+            "vertical_fraction": 0.9777864,
+            "center_x_fraction": 0.6491542,
+            "center_depth_fraction": 0.3432828,
+            "half_width_fraction": 0.1108615,
+            "half_depth_fraction": 0.1299556,
+            "left_x_fraction": 0.7600157,
+            "right_x_fraction": 0.5382927,
+            "anterior_fraction": 0.4732384,
+            "posterior_fraction": 0.2133272
+          },
+          {
+            "vertical_fraction": 0.987464,
+            "center_x_fraction": 0.6480352,
+            "center_depth_fraction": 0.3389342,
+            "half_width_fraction": 0.0808751,
+            "half_depth_fraction": 0.0976616,
+            "left_x_fraction": 0.7289103,
+            "right_x_fraction": 0.56716,
+            "anterior_fraction": 0.4365957,
+            "posterior_fraction": 0.2412726
+          },
+          {
+            "vertical_fraction": 0.9944154,
+            "center_x_fraction": 0.6483828,
+            "center_depth_fraction": 0.3357003,
+            "half_width_fraction": 0.0516532,
+            "half_depth_fraction": 0.0619351,
+            "left_x_fraction": 0.700036,
+            "right_x_fraction": 0.5967296,
+            "anterior_fraction": 0.3976354,
+            "posterior_fraction": 0.2737652
+          },
+          {
+            "vertical_fraction": 0.9986019,
+            "center_x_fraction": 0.64792,
+            "center_depth_fraction": 0.3407308,
+            "half_width_fraction": 0.0173924,
+            "half_depth_fraction": 0.0257785,
+            "left_x_fraction": 0.6653124,
+            "right_x_fraction": 0.6305276,
+            "anterior_fraction": 0.3665093,
+            "posterior_fraction": 0.3149524
+          },
+          {
+            "vertical_fraction": 1.0,
+            "center_x_fraction": 0.64792,
+            "center_depth_fraction": 0.3407308,
+            "half_width_fraction": 0.0,
+            "half_depth_fraction": 0.0,
+            "left_x_fraction": 0.64792,
+            "right_x_fraction": 0.64792,
+            "anterior_fraction": 0.3407308,
+            "posterior_fraction": 0.3407308
+          }
+        ]
+      },
+      "validation": {
+        "front_xy_silhouette": {
+          "resolution_px": 384,
+          "intersection_over_union": 0.9909035,
+          "mean_edge_error_fraction": 0.0026719,
+          "p95_edge_error_fraction": 0.0078125
+        },
+        "profile_zy_silhouette": {
+          "resolution_px": 384,
+          "intersection_over_union": 0.9966165,
+          "mean_edge_error_fraction": 0.0010916,
+          "p95_edge_error_fraction": 0.0026042
+        },
+        "passes_front_95_percent_iou": true,
+        "passes_profile_95_percent_iou": true
+      }
+    }
+  },
+  "integration_targets": {
+    "liver_hra_female": {
+      "targetMin": [
+        -1.14,
+        5.9,
+        -0.32
+      ],
+      "targetSize": [
+        1.87,
+        1.45,
+        1.16
+      ],
+      "note": "drop-in replacement for the current liver target box; remove hand-authored silhouette deformPoint"
+    },
+    "stomach_bodyparts3d_morphology": {
+      "targetMin": [
+        -0.28,
+        5.74,
+        0.42
+      ],
+      "targetSize": [
+        1.1,
+        1.0,
+        0.58
+      ],
+      "note": "landmark-scaled morphology target only; tune as a unit, never register BodyParts3D millimeters directly to HRA meters"
+    }
+  },
+  "attribution": [
+    "HuBMAP Human Reference Atlas, CC BY 4.0.",
+    "BodyParts3D \u00a9 The Database Center for Life Science licensed under CC Attribution 4.0 International."
+  ]
+}
