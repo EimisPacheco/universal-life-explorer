@@ -232,6 +232,14 @@ class AnatomyRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
+    def end_headers(self) -> None:
+        # Never let the browser cache the HTML shells: stale cached copies of
+        # index.html (app) / anatomy.html repeatedly resurrected already-fixed bugs.
+        # (Vendored wasm/models stay cacheable — they are immutable and large.)
+        if self.path.split("?")[0].endswith((".html", "/")):
+            self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def read_json_body(self) -> dict[str, Any] | None:
         """Read and parse a JSON request body, or send an error and return None."""
         try:

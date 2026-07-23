@@ -14,3 +14,4 @@ __pycache__/
 # Heavy anatomy reference source data (dev-only; the app only fetches reference-atlas/fits/*.json)
 reference-atlas/models/
 reference-atlas/source-metadata/
+.vercel

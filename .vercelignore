@@ -1,0 +1,27 @@
+# Local credentials and development metadata
+.env
+.git
+.DS_Store
+.claude
+.vercel
+__pycache__
+
+# Historical copies and local review material
+index backup.html
+index backup16.html
+index.bodyparts-scan-backup-*.html
+index.pre-*.html
+index11.html
+BUILD-TODO.md
+DEVPOST.md
+devpost-screenshots
+
+# Unused experiments and third-party reference archives
+backup-cosmic-explorer
+body-browser
+heart-viz
+trace-test
+reference-atlas/models
+reference-atlas/source-metadata
+reference-atlas/cache
+tools/reference-analysis/output
