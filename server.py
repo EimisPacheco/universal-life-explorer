@@ -377,6 +377,21 @@ class AnatomyRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_head(self):
+        # Force fresh HTML. SimpleHTTPRequestHandler answers a browser's
+        # If-Modified-Since with 304 and the browser then serves its STALE
+        # cached page — so no-store alone never dislodged an already-cached
+        # build (this bit the whole project: fixes "didn't reach" the browser).
+        # send_head runs for BOTH GET and HEAD; strip the conditional headers so
+        # every HTML request is a full 200 with current bytes. Big vendor assets
+        # (wasm/models) stay revalidatable to save bandwidth.
+        route = self.path.split("?", 1)[0]
+        if route.endswith((".html", "/")):
+            for header in ("If-Modified-Since", "If-None-Match"):
+                while header in self.headers:
+                    del self.headers[header]
+        return super().send_head()
+
     def do_GET(self) -> None:
         route = self.path.split("?", 1)[0]
         if route == "/api/settings":

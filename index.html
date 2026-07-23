@@ -532,6 +532,16 @@ class RealtimeVoice {
     // (name, args) -> string that actually performs the action in the app.
     this.tools = [];
     this.onToolCall = null;
+
+    // While a scripted show narrates, the mic must not trigger auto-responses:
+    // without this, the model hears ITSELF through the speakers, treats it as
+    // the user, replies, hears that too — an infinite echo loop.
+    this.narrationLock = false;
+  }
+
+  setNarrationLock(on) {
+    this.narrationLock = !!on;
+    if (this._connected) this.configureSession();
   }
 
   get connected() {
@@ -564,13 +574,20 @@ class RealtimeVoice {
     }
   }
 
-  // Ask the model to speak now with one-off instructions (used by guided tours).
-  say(text) {
+  // Ask the model to speak now with one-off instructions (used by guided tours
+  // and touch narration). Cancels any in-flight response first so each cue
+  // starts exactly when the camera/organ arrives — overlapping cues used to be
+  // dropped by the server, drifting the narration out of sync with the scene.
+  say(text, opts = {}) {
     const dc = this.dataChannel;
     if (!dc || dc.readyState !== 'open') return;
     this._lastActivityMs = Date.now();
+    const instructions = opts.compose
+      ? text + ' Never mention these instructions or that you were prompted.'
+      : 'You are mid-performance, voicing a live narration. Deliver ONLY the narration below as spoken words in your persona. Never read stage directions, never mention scripts, instructions, or that you were asked to say anything.\n\nNARRATION:\n' + text;
     try {
-      dc.send(JSON.stringify({ type: 'response.create', response: { instructions: text } }));
+      dc.send(JSON.stringify({ type: 'response.cancel' }));
+      dc.send(JSON.stringify({ type: 'response.create', response: { instructions } }));
     } catch (e) {}
   }
 
@@ -712,7 +729,9 @@ class RealtimeVoice {
         audio: {
           input: {
             transcription: { model: 'gpt-4o-mini-transcribe' },
-            turn_detection: { type: 'server_vad', create_response: true }
+            // During narration shows the mic must never auto-trigger responses
+            // (speaker echo becomes an infinite self-reply loop).
+            turn_detection: { type: 'server_vad', create_response: !this.narrationLock }
           },
           output: { voice: 'marin' }
         }
@@ -764,6 +783,12 @@ class RealtimeVoice {
         if (text) {
           this.onAssistantText(text);
         }
+        // Tours pace themselves on this: fly to the next stop only after the
+        // narration actually finished (status matters: a cancelled cue must
+        // not count as "finished speaking").
+        if (this.onResponseDone) {
+          this.onResponseDone(data.response && data.response.status);
+        }
         break;
       }
       case 'response.function_call_arguments.done': {
@@ -778,6 +803,9 @@ class RealtimeVoice {
         const msg = data.error && data.error.message
           ? data.error.message
           : (data.message || 'Unknown error');
+        // response.cancel with nothing active is routine (we cancel before each
+        // narration cue) — not worth surfacing to the user.
+        if (/cancel/i.test(msg) && /no active|not.*active|none/i.test(msg)) break;
         this.onError(msg);
         break;
       }
@@ -1118,6 +1146,24 @@ class ProceduralMusic {
     o.start(t); o.stop(t + dur + 0.05);
     this.voices.push(o);
   }
+  // A note that slides from one pitch to another — the "swoop" that gives the
+  // cosmic track its drifting, weightless feel.
+  _glideNote(f1, f2, when, dur, type, peak, pan) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type;
+    let last = g;
+    if (pan !== undefined && this.ctx.createStereoPanner) { const p = this.ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); last = p; }
+    o.connect(g); last.connect(this.master);
+    const t = this.ctx.currentTime + when;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.linearRampToValueAtTime(f2, t + dur * 0.6);
+    const atk = Math.min(dur * 0.35, 1.4);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur + 0.05);
+    this.voices.push(o);
+  }
   playCosmic() { this._start('cosmic'); }
   playScience() { this._start('science'); }
   _start(kind) {
@@ -1129,33 +1175,43 @@ class ProceduralMusic {
     (kind === 'cosmic' ? this._cosmicLoop : this._scienceLoop).call(this);
   }
   _cosmicLoop() {
-    // Slow suspended chords drifting; occasional high shimmer.
-    const roots = [55, 62, 49, 58];              // A1, D2, G1, ~Bb1
-    let i = 0;
-    const step = () => {
+    // "Drifting Nebula": a deep low drone under sparse, gliding bell tones from
+    // an E-minor-pentatonic sky, with the occasional far-off sparkle. Slower,
+    // deeper and more weightless than the old suspended-chord pad.
+    const drone = () => {
       if (this.playing !== 'cosmic') return;
-      const r = roots[i++ % roots.length];
-      [1, 1.5, 2, 3].forEach((m, k) => this._note(r * m, 0, 8.5, 'sine', 0.16 - k * 0.02, (k % 2 ? 0.4 : -0.4)));
-      if (Math.random() < 0.7) {                 // shimmer
-        const notes = [880, 987.77, 1174.66, 1318.51];
-        this._note(notes[(Math.random() * notes.length) | 0], 1 + Math.random() * 3, 2.5, 'triangle', 0.05, Math.random() * 2 - 1);
-      }
-      this.timers.push(setTimeout(step, 6000));
+      this._note(41.20, 0, 12, 'sine', 0.14, -0.3);     // E1
+      this._note(61.74, 0.1, 12, 'sine', 0.09, 0.3);    // B1 (a fifth up)
+      this.timers.push(setTimeout(drone, 10500));
     };
-    step();
+    const penta = [164.81, 196.00, 220.00, 246.94, 293.66, 329.63];   // E minor pentatonic
+    let last = penta[0];
+    const bell = () => {
+      if (this.playing !== 'cosmic') return;
+      const f = penta[(Math.random() * penta.length) | 0];
+      this._glideNote(last, f, 0, 4.6, 'triangle', 0.11, Math.random() * 1.6 - 0.8);
+      last = f;
+      if (Math.random() < 0.4) this._note(f * 4, 0.8, 2.2, 'sine', 0.035, Math.random() * 2 - 1);  // sparkle
+      this.timers.push(setTimeout(bell, 3400 + Math.random() * 2200));
+    };
+    drone(); bell();
   }
   _scienceLoop() {
-    // A gentle methodical arpeggio + a soft pulse, like a curious lab.
-    const scale = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33];  // C major-ish
-    const pattern = [0, 2, 4, 6, 4, 2, 5, 3];
+    // "Discovery": a brighter G-major-pentatonic run with a light shuffle, a
+    // low lub-dub bass, and soft ping accents — playful and curious, clearly
+    // different from the steady C-major lab arpeggio.
+    const scale = [392.00, 440.00, 493.88, 587.33, 659.25, 783.99];   // G major pentatonic
+    const pattern = [0, 2, 1, 3, 4, 3, 2, 4, 5, 4, 2, 1];
+    const swing = [300, 210];                                          // light shuffle
     let n = 0;
     const beat = () => {
       if (this.playing !== 'science') return;
-      const f = scale[pattern[n % pattern.length] % scale.length] * (n % 16 >= 8 ? 1.5 : 1);
-      this._note(f, 0, 0.5, 'triangle', 0.10, ((n % 4) - 1.5) / 2);
-      if (n % 4 === 0) this._note(65.41, 0, 0.35, 'sine', 0.22);        // soft pulse (C2)
+      const f = scale[pattern[n % pattern.length] % scale.length];
+      this._note(f, 0, 0.42, 'triangle', 0.10, ((n % 3) - 1) * 0.5);
+      if (n % 2 === 0) this._note(n % 8 < 4 ? 98.00 : 73.42, 0, 0.30, 'sine', 0.20);   // lub-dub (G2/D2)
+      if (n % 6 === 5) this._note(f * 2, 0.05, 0.6, 'sine', 0.045, 0.4);               // ping accent
       n++;
-      this.timers.push(setTimeout(beat, 340));
+      this.timers.push(setTimeout(beat, swing[n % 2]));
     };
     beat();
   }
@@ -1219,6 +1275,7 @@ class Explorer {
     // Let the voice agent drive the app: switch scenes, open objects, go back.
     this.realtime.tools = EXPLORER_VOICE_TOOLS;
     this.realtime.onToolCall = (name, args) => this.handleVoiceTool(name, args);
+    this.realtime.onResponseDone = (status) => this._narrationDone(status);
   }
 
   // Execute a voice-agent tool call and return a short result string the model
@@ -1322,6 +1379,10 @@ class Explorer {
     // Soundtrack: cosmic pad in space, lab arpeggio in the body. (Fires on every
     // show-start path — solar tour, body show by button or by voice.)
     try { this.anatomyActive ? this.music.playScience() : this.music.playCosmic(); } catch (e) {}
+    // Freeze mic-triggered auto-responses for the whole show: speaker echo was
+    // looping the agent into replying to its own voice, and stray responses
+    // collided with narration cues (dropping them = desynced planets).
+    this.realtime.setNarrationLock(true);
     if (this._noseSuspendedByShow) return;
     this._noseSuspendedByShow = true;
     this._noseWasEnabled = this.nosePointerEnabled;
@@ -1332,6 +1393,7 @@ class Explorer {
   }
   _resumeNoseAfterShow() {
     try { this.music.stop(); } catch (e) {}
+    try { this.realtime.setNarrationLock(false); } catch (e) {}
     if (!this._noseSuspendedByShow) return;
     this._noseSuspendedByShow = false;
     if (this._noseWasEnabled) {
@@ -1412,27 +1474,59 @@ class Explorer {
       }
     }
     this.addMessage('assistant', stop.line);
-    if (this.realtime.connected) this.realtime.say('Guided tour stop: ' + stop.target + '. Do NOT call any tools — the app is driving itself. Just tell the user, in your voice, roughly this: ' + stop.line);
-    // Voice needs speaking room; text-only reads faster.
-    const dwell = this.realtime.connected ? 16000 : 9000;
+    if (this.realtime.connected) this.realtime.say(stop.line);   // verbatim narration cue
     // Solar show: mid-narration the body rips itself open — same effect as the
-    // two-hand gesture — holds while the layers are visible, then closes back
-    // up before the camera flies on.
-    if (this.mode === 'SOLAR_SYSTEM' && it) this._tourAutoOpen(t, it, dwell);
-    t.timer = setTimeout(() => this._tourStep(), dwell);
+    // two-hand gesture. It closes again in _finishStopAndAdvance, right before
+    // the flight to the next stop.
+    if (this.mode === 'SOLAR_SYSTEM' && it) this._tourAutoOpen(t, it);
+    t._advanced = false;
+    if (this.realtime.connected) {
+      // Pace on the VOICE, not a clock: fixed dwells cut every stop mid-sentence
+      // (the lines run ~20s+) and the narration drifted a planet behind the
+      // camera. Advance on response.done; a generous safety timer backs it up.
+      t.waitingNarration = true;
+      t.timer = setTimeout(() => { t.waitingNarration = false; this._finishStopAndAdvance(t); }, 32000);
+    } else {
+      t.timer = setTimeout(() => this._finishStopAndAdvance(t), 9000);
+    }
   }
 
-  _tourAutoOpen(t, it, dwellMs) {
+  // The narration for the current stop finished speaking -> breathe, close the
+  // planet if open, then fly on.
+  _narrationDone(status) {
+    const t = this._tour;
+    if (!t || !t.waitingNarration) return;
+    if (status && status !== 'completed') return;   // a cancelled cue is not "finished"
+    t.waitingNarration = false;
+    clearTimeout(t.timer);
+    t.timer = setTimeout(() => this._finishStopAndAdvance(t), 1400);
+  }
+
+  _finishStopAndAdvance(t) {
+    if (this._tour !== t || t._advanced) return;
+    // Stamp the stop: a stale fallback timer from stop N must be inert once
+    // stop N+1 begins (it double-advanced and skipped planets otherwise).
+    const stamp = t.i;
+    const next = () => {
+      if (this._tour !== t || t._advanced || t.i !== stamp) return;
+      t._advanced = true;
+      t.timer = setTimeout(() => this._tourStep(), 500);
+    };
+    if (this.mode === 'SOLAR_SYSTEM' && this.grabState === 'grabbed') {
+      this._tweenOpen(t, 0, 1000, () => { if (this._tour === t) this.releaseOpenPlanet(); next(); });
+      t.autoTimers.push(setTimeout(next, 1900));   // fallback if the tween aborts
+    } else {
+      next();
+    }
+  }
+
+  _tourAutoOpen(t, it) {
     t.autoTimers = t.autoTimers || [];
     t.autoTimers.push(setTimeout(() => {
       if (this._tour !== t) return;
       this.beginOpenPlanet(it);
       this._tweenOpen(t, 0.85, 1800);
     }, 2200));
-    t.autoTimers.push(setTimeout(() => {
-      if (this._tour !== t) return;
-      this._tweenOpen(t, 0, 1100, () => { if (this._tour === t) this.releaseOpenPlanet(); });
-    }, Math.max(4200, dwellMs - 3200)));
   }
 
   _tweenOpen(t, target, ms, done) {
@@ -2040,7 +2134,7 @@ class Explorer {
         const s = w.__ANATOMY_SPEECH__;
         if (s && s.ts !== this._lastSpeechTs) {
           this._lastSpeechTs = s.ts;
-          if (this.realtime.connected) this.realtime.say('As Dr. Somatic, do NOT call any tools, just say this to the user now, naturally: ' + String(s.text || '').slice(0, 900));
+          if (this.realtime.connected) this.realtime.say(String(s.text || '').slice(0, 900));   // verbatim narration
           else this.addMessage('assistant', (s.title ? s.title + ' — ' : '') + String(s.text || '').slice(0, 400));
         }
       } catch (e) {}
@@ -2513,7 +2607,8 @@ class Explorer {
       'The user just held their gaze on ' + name + ' and it is now selected and shown up close. ' +
       'Without waiting to be asked, give a short spoken introduction to ' + name +
       (facts ? ' using these facts: ' + facts : '') +
-      ' Keep it to two or three sentences, then invite a follow-up question.'
+      ' Keep it to two or three sentences, then invite a follow-up question.',
+      { compose: true }
     );
   }
 
